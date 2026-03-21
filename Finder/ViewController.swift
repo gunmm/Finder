@@ -16,6 +16,8 @@ class ViewController: UIViewController {
         view.backgroundColor = .systemBackground
         title = "实时网页相机"
         
+        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "使用说明", style: .plain, target: self, action: #selector(showInstructionsTapped))
+        
         setupUI()
         setupConstraints()
     }
@@ -90,12 +92,17 @@ class ViewController: UIViewController {
     }
     
     // MARK: - Actions
+    @objc private func showInstructionsTapped() {
+        let instructionsVC = InstructionsViewController()
+        navigationController?.pushViewController(instructionsVC, animated: true)
+    }
+    
     @objc private func webSwitchChanged(_ sender: UISwitch) {
         if sender.isOn {
             if ServerManager.shared.startLiveWeb() {
                 webStatusLabel.text = "网页图库服务: 开启"
                 let urlStr = ServerManager.shared.liveURL?.absoluteString ?? "正在获取局域网IP..."
-                webIpLabel.text = "🌍 浏览器打开: \(urlStr)"
+                webIpLabel.text = "🌍 浏览器打开: \(urlStr) (长按复制链接)"
             } else {
                 sender.isOn = false
                 webStatusLabel.text = "网页图库服务: 启动失败"
@@ -113,7 +120,10 @@ class ViewController: UIViewController {
               let text = label.text else { return }
         
         guard let range = text.range(of: "http://") else { return }
-        let urlText = String(text[range.lowerBound...])
+        var urlText = String(text[range.lowerBound...])
+        if let spaceIndex = urlText.firstIndex(of: " ") {
+            urlText = String(urlText[..<spaceIndex])
+        }
         
         UIPasteboard.general.string = urlText
         
