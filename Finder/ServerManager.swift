@@ -1,4 +1,6 @@
 import Foundation
+import UIKit
+import Vision
 import GCDWebServer
 
 class ServerManager {
@@ -50,6 +52,57 @@ class ServerManager {
             return GCDWebServerResponse(statusCode: 200)
         })
         
+        // Analyze: detect dominant rectangle (for crop hint)
+        webServer?.addHandler(forMethod: "GET", path: "/analyze", request: GCDWebServerRequest.self, processBlock: { request in
+            guard let fileName = request.query?["file"],
+                  !fileName.contains("/"), !fileName.contains("..") else {
+                return GCDWebServerDataResponse(jsonObject: ["error": "invalid file"])
+            }
+            let fileURL = PhotoManager.shared.sharedPhotosDirectory.appendingPathComponent(fileName)
+            guard let data = try? Data(contentsOf: fileURL),
+                  let image = UIImage(data: data) else {
+                return GCDWebServerDataResponse(jsonObject: ["error": "cannot load image"])
+            }
+            if let rect = ImageAnalyzer.detectRectangle(in: image) {
+                let response = GCDWebServerDataResponse(jsonObject: rect)
+                response?.setValue("*", forAdditionalHeader: "Access-Control-Allow-Origin")
+                return response
+            } else {
+                let response = GCDWebServerDataResponse(jsonObject: ["error": "no rectangle detected"])
+                response?.setValue("*", forAdditionalHeader: "Access-Control-Allow-Origin")
+                return response
+            }
+        })
+        
+        // OCR: recognize text in photo
+        webServer?.addHandler(forMethod: "GET", path: "/ocr", request: GCDWebServerRequest.self, processBlock: { request in
+            guard let fileName = request.query?["file"],
+                  !fileName.contains("/"), !fileName.contains("..") else {
+                return GCDWebServerDataResponse(jsonObject: ["error": "invalid file"])
+            }
+            let fileURL = PhotoManager.shared.sharedPhotosDirectory.appendingPathComponent(fileName)
+            guard let data = try? Data(contentsOf: fileURL),
+                  let image = UIImage(data: data) else {
+                return GCDWebServerDataResponse(jsonObject: ["error": "cannot load image"])
+            }
+            let semaphore = DispatchSemaphore(value: 0)
+            var resultText: String? = nil
+            ImageAnalyzer.recognizeText(in: image) { text in
+                resultText = text
+                semaphore.signal()
+            }
+            semaphore.wait()
+            if let text = resultText {
+                let response = GCDWebServerDataResponse(jsonObject: ["text": text])
+                response?.setValue("*", forAdditionalHeader: "Access-Control-Allow-Origin")
+                return response
+            } else {
+                let response = GCDWebServerDataResponse(jsonObject: ["error": "no text found"])
+                response?.setValue("*", forAdditionalHeader: "Access-Control-Allow-Origin")
+                return response
+            }
+        })
+        
         webServer?.addHandler(forMethod: "GET", path: "/", request: GCDWebServerRequest.self, processBlock: { [weak self] _ in
             let html = self?.getLiveHTML() ?? ""
             return GCDWebServerDataResponse(html: html)
@@ -91,128 +144,377 @@ class ServerManager {
                 p { color: #888; font-size: 15px; margin-top: 0; margin-bottom: 30px; }
                 #gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; padding: 10px; max-width: 1200px; margin: auto; }
                 a { text-decoration: none; outline: none; display: block; }
-                
+
                 .img-container { position: relative; width: 100%; border-radius: 12px; }
-                img { width: 100%; height: 220px; object-fit: cover; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.5); transition: transform 0.3s; cursor: pointer; display: block; }
-                .img-container:hover img { transform: scale(1.05); box-shadow: 0 12px 24px rgba(255,255,255,0.15); z-index: 10; }
-                
-                .delete-btn {
-                    position: absolute; top: 8px; right: 8px; width: 32px; height: 32px;
-                    background: rgba(255, 60, 60, 0.85); color: white; border-radius: 16px;
-                    display: flex; justify-content: center; align-items: center; 
-                    cursor: pointer; font-size: 18px; font-weight: bold; 
-                    opacity: 0; transition: all 0.2s; z-index: 20; box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+                .img-container img { width: 100%; height: 220px; object-fit: cover; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.5); transition: transform 0.3s; cursor: pointer; display: block; }
+                .img-container:hover img { transform: scale(1.05); box-shadow: 0 12px 24px rgba(255,255,255,0.15); }
+
+                .action-bar {
+                    position: absolute; bottom: 0; left: 0; right: 0;
+                    display: flex; justify-content: space-around; align-items: center;
+                    background: linear-gradient(transparent, rgba(0,0,0,0.75));
+                    border-radius: 0 0 12px 12px; padding: 8px 6px 6px;
+                    opacity: 0; transition: opacity 0.2s; z-index: 20;
                 }
-                .img-container:hover .delete-btn { opacity: 1; }
-                .delete-btn:hover { background: red; transform: scale(1.15); }
+                .img-container:hover .action-bar { opacity: 1; }
+                .action-btn {
+                    flex: 1; margin: 0 3px; padding: 5px 0;
+                    background: rgba(255,255,255,0.18); backdrop-filter: blur(4px);
+                    color: #fff; border: none; border-radius: 8px;
+                    font-size: 13px; cursor: pointer; transition: background 0.15s;
+                }
+                .action-btn:hover { background: rgba(255,255,255,0.35); }
+                .action-btn.del { background: rgba(255,60,60,0.7); }
+                .action-btn.del:hover { background: rgba(255,60,60,1); }
 
                 .new-item { animation: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; opacity: 0; }
                 @keyframes pop { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-                
+
                 #dropzone {
                     display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-                    background: rgba(0, 255, 136, 0.85); color: #000; font-size: 40px; font-weight: bold;
+                    background: rgba(0,255,136,0.85); color: #000; font-size: 40px; font-weight: bold;
                     justify-content: center; align-items: center; z-index: 9999;
                     box-sizing: border-box; border: 15px dashed #000;
                 }
+
+                /* Crop modal */
+                #crop-modal {
+                    display: none; position: fixed; inset: 0;
+                    background: rgba(0,0,0,0.92); z-index: 10000;
+                    flex-direction: column; align-items: center; justify-content: center;
+                }
+                #crop-modal.active { display: flex; }
+                #crop-wrap { position: relative; display: inline-block; max-width: 90vw; max-height: 78vh; overflow: hidden; }
+                #crop-img  { display: block; max-width: 90vw; max-height: 78vh; }
+                #crop-box  {
+                    position: absolute; border: 2px solid #00ff88;
+                    box-shadow: 0 0 0 9999px rgba(0,0,0,0.55);
+                    cursor: move; box-sizing: border-box;
+                }
+                .handle { position: absolute; width: 14px; height: 14px; background: #00ff88; border-radius: 50%; border: 2px solid #000; }
+                .handle.tl { top:-7px;  left:-7px;            cursor:nwse-resize; }
+                .handle.tr { top:-7px;  right:-7px;           cursor:nesw-resize; }
+                .handle.bl { bottom:-7px; left:-7px;          cursor:nesw-resize; }
+                .handle.br { bottom:-7px; right:-7px;         cursor:nwse-resize; }
+                .handle.tm { top:-7px;  left:calc(50% - 7px); cursor:ns-resize;   }
+                .handle.bm { bottom:-7px; left:calc(50% - 7px); cursor:ns-resize; }
+                .handle.ml { top:calc(50% - 7px); left:-7px;  cursor:ew-resize;   }
+                .handle.mr { top:calc(50% - 7px); right:-7px; cursor:ew-resize;   }
+                #crop-actions { margin-top: 18px; display: flex; gap: 14px; }
+                .crop-confirm { padding: 10px 36px; background: #00ff88; color: #000; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; }
+                .crop-cancel  { padding: 10px 36px; background: #333;    color: #fff; border: none; border-radius: 10px; font-size: 16px; cursor: pointer; }
+                #crop-hint   { color: #888;    font-size: 13px; margin-top: 8px; }
+                #crop-status { color: #00ff88; font-size: 13px; margin-top: 4px; min-height: 20px; }
+
+                /* OCR modal */
+                #ocr-modal {
+                    display: none; position: fixed; inset: 0;
+                    background: rgba(0,0,0,0.88); z-index: 10000;
+                    flex-direction: column; align-items: center; justify-content: center;
+                }
+                #ocr-modal.active { display: flex; }
+                #ocr-card {
+                    background: #1e1e1e; border-radius: 16px; padding: 28px 32px;
+                    max-width: 680px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+                }
+                #ocr-card h3 { margin: 0 0 16px; font-size: 18px; }
+                #ocr-text {
+                    background: #2a2a2a; border-radius: 10px; padding: 16px;
+                    text-align: left; white-space: pre-wrap; line-height: 1.7;
+                    max-height: 55vh; overflow-y: auto; font-size: 15px;
+                    user-select: text; -webkit-user-select: text; border: 1px solid #333;
+                }
+                #ocr-actions { margin-top: 18px; display: flex; gap: 12px; justify-content: center; }
+                .ocr-copy  { padding: 10px 32px; background: #00ff88; color: #000; border: none; border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer; }
+                .ocr-close { padding: 10px 24px; background: #333;    color: #fff; border: none; border-radius: 10px; font-size: 15px; cursor: pointer; }
+                #copy-tip { color: #00ff88; font-size: 13px; margin-top: 6px; min-height: 18px; }
             </style>
         </head>
         <body>
             <div id="dropzone">松开鼠标，立马传进手机！</div>
             <h2>📸 无延迟实时画廊</h2>
-            <p>只要手机一拍下照片，瞬间就会在这里自动蹦出来！<br><span style="color:#00ff88;">⬇️ 点击原图下载 | ⬆️ 直接往里拖拽文件上传 | 🗑️ 鼠标悬浮右上角点击彻底删除</span></p>
+            <p>只要手机一拍下照片，瞬间就会在这里自动蹦出来！<br><span style="color:#00ff88;">⬇️ 点击原图下载 | ✂️ 智能裁剪 | 📝 提取文字 | ⬆️ 拖拽上传 | 🗑️ 悬浮删除</span></p>
             <div id="gallery"></div>
+
+            <!-- Crop modal -->
+            <div id="crop-modal">
+                <div id="crop-wrap">
+                    <img id="crop-img" src="" alt="">
+                    <div id="crop-box">
+                        <div class="handle tl"></div><div class="handle tm"></div><div class="handle tr"></div>
+                        <div class="handle ml"></div><div class="handle mr"></div>
+                        <div class="handle bl"></div><div class="handle bm"></div><div class="handle br"></div>
+                    </div>
+                </div>
+                <div id="crop-hint">拖动绿框调整裁剪范围</div>
+                <div id="crop-status"></div>
+                <div id="crop-actions">
+                    <button class="crop-confirm" id="crop-confirm-btn">✅ 确认裁剪</button>
+                    <button class="crop-cancel"  id="crop-cancel-btn">取消</button>
+                </div>
+            </div>
+
+            <!-- OCR modal -->
+            <div id="ocr-modal">
+                <div id="ocr-card">
+                    <h3>📝 识别文字结果</h3>
+                    <div id="ocr-text"><span style="color:#888;">⏳ 正在识别，请稍候…</span></div>
+                    <div id="ocr-actions">
+                        <button class="ocr-copy"  id="ocr-copy-btn">一键复制</button>
+                        <button class="ocr-close" id="ocr-close-btn">关闭</button>
+                    </div>
+                    <div id="copy-tip"></div>
+                </div>
+            </div>
+
             <script>
                 let currentFiles = new Set();
                 const gallery = document.getElementById('gallery');
-                
+
                 function createPhotoElement(f, isNew) {
                     let container = document.createElement('div');
                     container.className = 'img-container';
                     if (isNew) container.classList.add('new-item');
-                    
+
                     let a = document.createElement('a');
                     a.href = '/photos/' + encodeURIComponent(f);
-                    a.download = f; 
-                    
+                    a.download = f;
                     let img = document.createElement('img');
                     img.src = '/photos/' + encodeURIComponent(f);
-                    
-                    let delBtn = document.createElement('div');
-                    delBtn.className = 'delete-btn';
-                    delBtn.innerHTML = '✕';
+                    a.appendChild(img);
+                    container.appendChild(a);
+
+                    let bar = document.createElement('div');
+                    bar.className = 'action-bar';
+
+                    let cropBtn = document.createElement('button');
+                    cropBtn.className = 'action-btn';
+                    cropBtn.textContent = '✂️ 裁剪';
+                    cropBtn.onclick = (e) => { e.preventDefault(); e.stopPropagation(); openCrop(f); };
+
+                    let ocrBtn = document.createElement('button');
+                    ocrBtn.className = 'action-btn';
+                    ocrBtn.textContent = '📝 文字';
+                    ocrBtn.onclick = (e) => { e.preventDefault(); e.stopPropagation(); openOCR(f); };
+
+                    let delBtn = document.createElement('button');
+                    delBtn.className = 'action-btn del';
+                    delBtn.textContent = '🗑️ 删除';
                     delBtn.onclick = (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if(confirm('确定要从手机服务器里永久删除这块照片吗？\\n(不仅本地看不到了，手机内也会彻底被粉碎)')) {
+                        e.preventDefault(); e.stopPropagation();
+                        if (confirm('确定要从手机服务器里永久删除这张照片吗?\\n(手机内也会彻底删除)')) {
                             fetch('/delete?file=' + encodeURIComponent(f), { method: 'POST' }).then(() => {
                                 currentFiles.delete(f);
                                 container.style.display = 'none';
                             });
                         }
                     };
-                    
-                    a.appendChild(img);
-                    container.appendChild(a);
-                    container.appendChild(delBtn);
-                    
+
+                    bar.appendChild(cropBtn);
+                    bar.appendChild(ocrBtn);
+                    bar.appendChild(delBtn);
+                    container.appendChild(bar);
                     return container;
                 }
-                
+
                 function fetchPhotos() {
                     fetch('/list').then(r => r.json()).then(files => {
                         let newFiles = files.filter(f => !currentFiles.has(f));
-                        
-                        // 发现服务器上有新文件/丢失文件差异需要大刷新或者追加
                         if (newFiles.length > 0 || files.length < currentFiles.size) {
-                            
                             gallery.innerHTML = '';
                             currentFiles.clear();
-                            
                             files.forEach(f => {
                                 currentFiles.add(f);
-                                let item = createPhotoElement(f, newFiles.includes(f));
-                                gallery.appendChild(item);
+                                gallery.appendChild(createPhotoElement(f, newFiles.includes(f)));
                             });
                         }
-                    }).catch(e => console.log("轮询错误:", e));
+                    }).catch(e => console.log('Poll error:', e));
                 }
-                
                 fetchPhotos();
                 setInterval(fetchPhotos, 800);
-                
+
+                // Drag-drop upload
                 const dropzone = document.getElementById('dropzone');
-                
-                window.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                    dropzone.style.display = 'flex';
-                });
-                
-                window.addEventListener('dragleave', (e) => {
-                    e.preventDefault();
-                    if(e.target === dropzone) {
-                        dropzone.style.display = 'none';
-                    }
-                });
-                
+                window.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.style.display = 'flex'; });
+                window.addEventListener('dragleave', (e) => { e.preventDefault(); if (e.target === dropzone) dropzone.style.display = 'none'; });
                 window.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    dropzone.style.display = 'none';
-                    
+                    e.preventDefault(); dropzone.style.display = 'none';
                     const files = e.dataTransfer.files;
-                    if(files.length === 0) return;
-                    
-                    const formData = new FormData();
-                    for(let i=0; i<files.length; i++){
-                        formData.append('file_' + i, files[i], files[i].name);
-                    }
-                    
-                    fetch('/upload', { method: 'POST', body: formData })
-                        .then(resp => {
-                            if(resp.ok) { fetchPhotos(); }
-                        })
-                        .catch(err => console.error("上传错误", err));
+                    if (!files.length) return;
+                    const fd = new FormData();
+                    for (let i = 0; i < files.length; i++) fd.append('file_' + i, files[i], files[i].name);
+                    fetch('/upload', { method: 'POST', body: fd }).then(r => { if (r.ok) fetchPhotos(); });
                 });
+
+                // ── Crop ─────────────────────────────────────────────
+                const cropModal   = document.getElementById('crop-modal');
+                const cropImg     = document.getElementById('crop-img');
+                const cropBox     = document.getElementById('crop-box');
+                const cropStatus  = document.getElementById('crop-status');
+                const cropConfirm = document.getElementById('crop-confirm-btn');
+                const cropCancel  = document.getElementById('crop-cancel-btn');
+                let cropFile = '';
+
+                function openCrop(f) {
+                    cropFile = f;
+                    cropStatus.textContent = '';
+                    cropModal.classList.add('active');
+                    cropImg.onload = () => {
+                        const w = cropImg.clientWidth, h = cropImg.clientHeight;
+                        setCropBox(w * 0.2, h * 0.2, w * 0.6, h * 0.6);
+                        cropStatus.textContent = '⏳ 自动识别文字区域…';
+                        fetch('/analyze?file=' + encodeURIComponent(f))
+                            .then(r => r.json())
+                            .then(data => {
+                                if (data.x !== undefined) {
+                                    setCropBox(data.x * w, data.y * h, data.width * w, data.height * h);
+                                    cropStatus.textContent = '✅ 已自动定位文字区域，可拖动调整';
+                                } else {
+                                    cropStatus.textContent = '💡 未检测到明显矩形，请手动调整';
+                                }
+                            })
+                            .catch(() => { cropStatus.textContent = '⚠️ 识别失败，请手动调整'; });
+                    };
+                    cropImg.src = '/photos/' + encodeURIComponent(f) + '?t=' + Date.now();
+                }
+
+                function setCropBox(x, y, w, h) {
+                    const wrap = document.getElementById('crop-wrap');
+                    const mw = wrap.clientWidth, mh = wrap.clientHeight;
+                    x = Math.max(0, Math.min(x, mw - 20));
+                    y = Math.max(0, Math.min(y, mh - 20));
+                    w = Math.max(20, Math.min(w, mw - x));
+                    h = Math.max(20, Math.min(h, mh - y));
+                    cropBox.style.left   = x + 'px';
+                    cropBox.style.top    = y + 'px';
+                    cropBox.style.width  = w + 'px';
+                    cropBox.style.height = h + 'px';
+                }
+
+                (function() {
+                    let dragging = false, resizing = false, handle = '';
+                    let startX, startY, startL, startT, startW, startH;
+                    cropBox.addEventListener('mousedown', (e) => {
+                        if (e.target.classList.contains('handle')) {
+                            resizing = true;
+                            for (let cls of e.target.classList) {
+                                if (['tl','tr','bl','br','tm','bm','ml','mr'].includes(cls)) { handle = cls; break; }
+                            }
+                        } else { dragging = true; }
+                        startX = e.clientX; startY = e.clientY;
+                        startL = parseInt(cropBox.style.left);  startT = parseInt(cropBox.style.top);
+                        startW = parseInt(cropBox.style.width); startH = parseInt(cropBox.style.height);
+                        e.preventDefault();
+                    });
+                    document.addEventListener('mousemove', (e) => {
+                        if (!dragging && !resizing) return;
+                        const dx = e.clientX - startX, dy = e.clientY - startY;
+                        const wrap = document.getElementById('crop-wrap');
+                        const mw = wrap.clientWidth, mh = wrap.clientHeight;
+                        if (dragging) {
+                            cropBox.style.left = Math.max(0, Math.min(startL + dx, mw - startW)) + 'px';
+                            cropBox.style.top  = Math.max(0, Math.min(startT + dy, mh - startH)) + 'px';
+                        } else {
+                            let l = startL, t = startT, w = startW, h = startH;
+                            if (handle.includes('r')) { w = Math.max(20, Math.min(startW + dx, mw - l)); }
+                            if (handle.includes('l')) { const nw = Math.max(20, startW - dx); l = Math.max(0, startL + startW - nw); w = startW + startL - l; }
+                            if (handle.includes('b')) { h = Math.max(20, Math.min(startH + dy, mh - t)); }
+                            if (handle.includes('t')) { const nh = Math.max(20, startH - dy); t = Math.max(0, startT + startH - nh); h = startH + startT - t; }
+                            cropBox.style.left = l + 'px'; cropBox.style.top  = t + 'px';
+                            cropBox.style.width = w + 'px'; cropBox.style.height = h + 'px';
+                        }
+                    });
+                    document.addEventListener('mouseup', () => { dragging = false; resizing = false; });
+                })();
+
+                cropConfirm.onclick = () => {
+                    cropStatus.textContent = '⏳ 裁剪中…';
+                    const dw = cropImg.clientWidth, dh = cropImg.clientHeight;
+                    const sx = cropImg.naturalWidth / dw, sy = cropImg.naturalHeight / dh;
+                    const bx = parseInt(cropBox.style.left) * sx, by = parseInt(cropBox.style.top) * sy;
+                    const bw = parseInt(cropBox.style.width) * sx, bh = parseInt(cropBox.style.height) * sy;
+                    const canvas = document.createElement('canvas');
+                    canvas.width = bw; canvas.height = bh;
+                    const ctx = canvas.getContext('2d');
+                    const fullImg = new Image();
+                    fullImg.crossOrigin = 'anonymous';
+                    fullImg.onload = () => {
+                        ctx.drawImage(fullImg, bx, by, bw, bh, 0, 0, bw, bh);
+                        canvas.toBlob(blob => {
+                            if (!blob) { cropStatus.textContent = '❌ 裁剪失败'; return; }
+                            const newName = 'crop_' + cropFile;
+                            const fd = new FormData();
+                            fd.append('file_0', blob, newName);
+                            fetch('/upload', { method: 'POST', body: fd })
+                                .then(() => fetch('/delete?file=' + encodeURIComponent(cropFile), { method: 'POST' }))
+                                .then(() => { cropModal.classList.remove('active'); fetchPhotos(); })
+                                .catch(() => { cropStatus.textContent = '❌ 上传失败'; });
+                        }, 'image/jpeg', 0.92);
+                    };
+                    fullImg.src = '/photos/' + encodeURIComponent(cropFile) + '?t=' + Date.now();
+                };
+                cropCancel.onclick = () => cropModal.classList.remove('active');
+                cropModal.addEventListener('click', (e) => { if (e.target === cropModal) cropModal.classList.remove('active'); });
+
+                // ── OCR ──────────────────────────────────────────────
+                const ocrModal   = document.getElementById('ocr-modal');
+                const ocrTextDiv = document.getElementById('ocr-text');
+                const ocrCopy    = document.getElementById('ocr-copy-btn');
+                const ocrClose   = document.getElementById('ocr-close-btn');
+                const copyTip    = document.getElementById('copy-tip');
+                let ocrResultText = '';
+
+                function openOCR(f) {
+                    ocrModal.classList.add('active');
+                    ocrTextDiv.innerHTML = '<span style="color:#888;">⏳ 正在识别，请稍候…</span>';
+                    copyTip.textContent = '';
+                    ocrResultText = '';
+                    fetch('/ocr?file=' + encodeURIComponent(f))
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.text) {
+                                ocrResultText = data.text;
+                                ocrTextDiv.textContent = data.text;
+                            } else {
+                                ocrTextDiv.textContent = '⚠️ 未识别到文字，请确认照片中有清晰的文字内容。';
+                            }
+                        })
+                        .catch(() => { ocrTextDiv.textContent = '❌ 识别请求失败，请确认手机服务正在运行。'; });
+                }
+
+                ocrCopy.onclick = () => {
+                    if (!ocrResultText) return;
+                    // navigator.clipboard 仅在 HTTPS/localhost 可用；
+                    // 对 http://192.168.x.x 用 execCommand 降级方案
+                    const tryExecCommand = () => {
+                        const ta = document.createElement('textarea');
+                        ta.value = ocrResultText;
+                        ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;';
+                        document.body.appendChild(ta);
+                        ta.focus(); ta.select();
+                        let ok = false;
+                        try { ok = document.execCommand('copy'); } catch(e) {}
+                        document.body.removeChild(ta);
+                        if (ok) {
+                            copyTip.textContent = '✅ 已复制到剪贴板！';
+                            setTimeout(() => { copyTip.textContent = ''; }, 2500);
+                        } else {
+                            copyTip.textContent = '⚠️ 请手动选中文字后复制';
+                        }
+                    };
+                    if (navigator.clipboard && window.isSecureContext) {
+                        navigator.clipboard.writeText(ocrResultText)
+                            .then(() => {
+                                copyTip.textContent = '✅ 已复制到剪贴板！';
+                                setTimeout(() => { copyTip.textContent = ''; }, 2500);
+                            })
+                            .catch(tryExecCommand);
+                    } else {
+                        tryExecCommand();
+                    }
+                };
+                ocrClose.onclick = () => ocrModal.classList.remove('active');
+                ocrModal.addEventListener('click', (e) => { if (e.target === ocrModal) ocrModal.classList.remove('active'); });
             </script>
         </body>
         </html>
