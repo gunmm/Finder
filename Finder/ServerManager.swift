@@ -118,11 +118,44 @@ class ServerManager {
             }
             
             let pdfDocument = PDFDocument()
+            let maxDimension: CGFloat = 1600.0 // 限制最大边长，既保证画质清晰，又大幅缩减 PDF 体积
+            
             for fileName in files {
                 guard !fileName.contains("/"), !fileName.contains(".."), !fileName.lowercased().hasSuffix(".pdf") else { continue }
                 let fileURL = PhotoManager.shared.sharedPhotosDirectory.appendingPathComponent(fileName)
-                guard let image = UIImage(contentsOfFile: fileURL.path) else { continue }
-                if let pdfPage = PDFPage(image: image) {
+                guard let originalImage = UIImage(contentsOfFile: fileURL.path) else { continue }
+                
+                var finalImage = originalImage
+                let currentMaxSide = max(originalImage.size.width, originalImage.size.height)
+                
+                // 1. 如果图片过大，则按比例缩小尺寸
+                if currentMaxSide > maxDimension {
+                    let ratio = currentMaxSide / maxDimension
+                    let newSize = CGSize(width: originalImage.size.width / ratio, height: originalImage.size.height / ratio)
+                    
+                    let format = UIGraphicsImageRendererFormat()
+                    format.scale = 1.0 // 固定缩放比为 1，确保使用实际物理像素
+                    let renderer = UIGraphicsImageRenderer(size: newSize, format: format)
+                    let resizedImage = renderer.image { _ in
+                        originalImage.draw(in: CGRect(origin: .zero, size: newSize))
+                    }
+                    
+                    // 2. 进一步使用 JPEG 压缩去掉多余的冗余数据
+                    if let compressedData = resizedImage.jpegData(compressionQuality: 0.75),
+                       let optimizedImage = UIImage(data: compressedData) {
+                        finalImage = optimizedImage
+                    } else {
+                        finalImage = resizedImage
+                    }
+                } else {
+                    // 对于本身不需要缩放的图片，也进行一下适度 JPG 压缩
+                    if let compressedData = originalImage.jpegData(compressionQuality: 0.8),
+                       let optimizedImage = UIImage(data: compressedData) {
+                        finalImage = optimizedImage
+                    }
+                }
+                
+                if let pdfPage = PDFPage(image: finalImage) {
                     pdfDocument.insert(pdfPage, at: pdfDocument.pageCount)
                 }
             }
@@ -407,16 +440,27 @@ class ServerManager {
                             pdfList.innerHTML = '<div style="text-align:center; color:#555; padding: 40px;">暂无 PDF 文件</div>';
                             return;
                         }
-                        files.forEach(f => {
+                        files.forEach((f, index) => {
                             let div = document.createElement('div');
                             div.className = 'pdf-item';
+                            if (index === 0) div.style.border = '1.5px solid #00ff88';
                             
                             let info = document.createElement('div');
                             info.className = 'pdf-item-info';
+                            let titleRow = document.createElement('div');
+                            titleRow.style.display = 'flex'; titleRow.style.alignItems = 'center'; titleRow.style.gap = '8px';
                             let title = document.createElement('div');
                             title.className = 'pdf-item-title';
+                            title.style.flex = '1';
                             title.textContent = f;
-                            info.appendChild(title);
+                            titleRow.appendChild(title);
+                            if (index === 0) {
+                                let badge = document.createElement('span');
+                                badge.textContent = '最新';
+                                badge.style.cssText = 'background:#00ff88;color:#000;font-size:11px;font-weight:bold;padding:2px 8px;border-radius:20px;white-space:nowrap;';
+                                titleRow.appendChild(badge);
+                            }
+                            info.appendChild(titleRow);
                             
                             let actions = document.createElement('div');
                             actions.className = 'pdf-item-actions';
