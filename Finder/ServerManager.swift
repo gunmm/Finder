@@ -2,6 +2,7 @@ import Foundation
 import UIKit
 import Vision
 import GCDWebServer
+import PDFKit
 
 class ServerManager {
     static let shared = ServerManager()
@@ -18,6 +19,11 @@ class ServerManager {
         
         webServer?.addHandler(forMethod: "GET", path: "/list", request: GCDWebServerRequest.self, processBlock: { _ in
             let files = PhotoManager.shared.getAllPhotos().map { $0.lastPathComponent }
+            return GCDWebServerDataResponse(jsonObject: files)
+        })
+        
+        webServer?.addHandler(forMethod: "GET", path: "/list_pdfs", request: GCDWebServerRequest.self, processBlock: { _ in
+            let files = PhotoManager.shared.getAllPDFs().map { $0.lastPathComponent }
             return GCDWebServerDataResponse(jsonObject: files)
         })
         
@@ -100,6 +106,39 @@ class ServerManager {
                 let response = GCDWebServerDataResponse(jsonObject: ["error": "no text found"])
                 response?.setValue("*", forAdditionalHeader: "Access-Control-Allow-Origin")
                 return response
+            }
+        })
+        
+        // Generate PDF
+        webServer?.addHandler(forMethod: "POST", path: "/generate_pdf", request: GCDWebServerDataRequest.self, processBlock: { request in
+            guard let dataReq = request as? GCDWebServerDataRequest,
+                  let json = try? JSONSerialization.jsonObject(with: dataReq.data, options: []) as? [String: Any],
+                  let files = json["files"] as? [String], !files.isEmpty else {
+                return GCDWebServerDataResponse(jsonObject: ["error": "invalid request"])
+            }
+            
+            let pdfDocument = PDFDocument()
+            for fileName in files {
+                guard !fileName.contains("/"), !fileName.contains(".."), !fileName.lowercased().hasSuffix(".pdf") else { continue }
+                let fileURL = PhotoManager.shared.sharedPhotosDirectory.appendingPathComponent(fileName)
+                guard let image = UIImage(contentsOfFile: fileURL.path) else { continue }
+                if let pdfPage = PDFPage(image: image) {
+                    pdfDocument.insert(pdfPage, at: pdfDocument.pageCount)
+                }
+            }
+            
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyyMMdd_HHmmss"
+            let dateStr = formatter.string(from: Date())
+            let pdfName = "Images_\(dateStr).pdf"
+            let destURL = PhotoManager.shared.sharedPhotosDirectory.appendingPathComponent(pdfName)
+            
+            if pdfDocument.write(to: destURL) {
+                let response = GCDWebServerDataResponse(jsonObject: ["pdf_url": "/photos/\(pdfName)", "pdf_name": pdfName])
+                response?.setValue("*", forAdditionalHeader: "Access-Control-Allow-Origin")
+                return response
+            } else {
+                return GCDWebServerDataResponse(jsonObject: ["error": "Failed to generate PDF"])
             }
         })
         
@@ -228,13 +267,84 @@ class ServerManager {
                 .ocr-copy  { padding: 10px 32px; background: #00ff88; color: #000; border: none; border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer; }
                 .ocr-close { padding: 10px 24px; background: #333;    color: #fff; border: none; border-radius: 10px; font-size: 15px; cursor: pointer; }
                 #copy-tip { color: #00ff88; font-size: 13px; margin-top: 6px; min-height: 18px; }
+
+                /* Multi-select PDF */
+                #top-actions { display: flex; justify-content: center; gap: 12px; margin-bottom: 25px; }
+                .top-btn { padding: 8px 18px; background: rgba(255,255,255,0.15); border: none; border-radius: 8px; color: #fff; font-size: 15px; cursor: pointer; transition: 0.2s; backdrop-filter: blur(4px); }
+                .top-btn:hover { background: rgba(255,255,255,0.25); }
+                .top-btn.active-mode { background: #00ff88; color: #000; font-weight: bold; }
+                .img-container .check-mark { 
+                    position: absolute; top: 10px; right: 10px; width: 26px; height: 26px;
+                    border-radius: 50%; border: 2px solid #fff; background: rgba(0,0,0,0.4);
+                    display: none; z-index: 10; pointer-events: none; backdrop-filter: blur(2px);
+                }
+                body.select-mode .img-container .check-mark { display: block; }
+                .img-container.selected .check-mark { background: #00ff88; border-color: #00ff88; }
+                .img-container.selected .check-mark::after {
+                    content: '✓'; color: #000; position: absolute; top: 50%; left: 50%;
+                    transform: translate(-50%, -50%); font-weight: bold; font-size: 16px;
+                }
+                body.select-mode .action-bar { display: none !important; }
+                body.select-mode .img-container a { pointer-events: none; }
+                body.select-mode .img-container img { transform: scale(0.96); opacity: 0.8; }
+                body.select-mode .img-container:hover img { transform: scale(0.96); box-shadow: 0 8px 16px rgba(0,0,0,0.5); }
+                body.select-mode .img-container.selected img { transform: scale(1); opacity: 1; border: 3px solid #00ff88; box-sizing: border-box; }
+                body.select-mode .img-container.selected:hover img { transform: scale(1.02); }
+
+                /* Tab Switcher */
+                .tab-nav { display: flex; justify-content: center; gap: 20px; margin-bottom: 25px; }
+                .tab-btn { padding: 10px 24px; font-size: 16px; font-weight: bold; color: #888; background: transparent; border: none; cursor: pointer; border-bottom: 3px solid transparent; transition: 0.2s; }
+                .tab-btn.active { color: #00ff88; border-bottom: 3px solid #00ff88; }
+                
+                #photo-tab-content { display: block; }
+                #pdf-tab-content { display: none; text-align: left; max-width: 800px; margin: 0 auto; padding: 0 15px; }
+
+                .pdf-item { display: flex; justify-content: space-between; align-items: center; background: #222; padding: 15px 20px; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+                .pdf-item-info { flex: 1; overflow: hidden; }
+                .pdf-item-title { color: #fff; font-size: 16px; margin-bottom: 4px; word-break: break-all; }
+                .pdf-item-actions { display: flex; gap: 10px; }
+                .pdf-btn { padding: 8px 16px; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: bold; }
+                .pdf-btn.dl { background: #00ff88; color: #000; text-decoration: none; display: inline-block; }
+                .pdf-btn.del { background: #ff3c3c; color: #fff; }
+
+                /* PDF Preview Modal */
+                #pdf-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 10000; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+                #pdf-modal.active { display: flex; }
+                #pdf-iframe-container { width: 90vw; height: 85vh; background: #fff; border-radius: 12px; overflow: hidden; position: relative; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
+                #pdf-iframe { width: 100%; height: 100%; border: none; }
+                #pdf-modal-close { margin-top: 15px; padding: 10px 36px; background: #333; color: #fff; border: none; border-radius: 10px; font-size: 16px; cursor: pointer; transition: 0.2s; }
+                #pdf-modal-close:hover { background: #444; }
             </style>
         </head>
         <body>
             <div id="dropzone">松开鼠标，立马传进手机！</div>
             <h2>📸 无延迟实时画廊</h2>
-            <p>只要手机一拍下照片，瞬间就会在这里自动蹦出来！<br><span style="color:#00ff88;">⬇️ 点击原图下载 | ✂️ 智能裁剪 | 📝 提取文字 | ⬆️ 拖拽上传 | 🗑️ 悬浮删除</span></p>
-            <div id="gallery"></div>
+            <div class="tab-nav">
+                <button class="tab-btn active" id="btn-tab-photo">📸 相册图库</button>
+                <button class="tab-btn" id="btn-tab-pdf">📄 PDF 管理</button>
+            </div>
+
+            <div id="photo-tab-content">
+                <p>只要手机一拍下照片，瞬间就会在这里自动蹦出来！<br><span style="color:#00ff88;">⬇️ 点击原图下载 | ✂️ 智能裁剪 | 📝 提取文字 | ⬆️ 拖拽上传 | 🗑️ 悬浮删除</span></p>
+                <div id="top-actions">
+                    <button class="top-btn" id="toggle-select-btn">🔲 多图生成 PDF</button>
+                    <button class="top-btn" id="generate-pdf-btn" style="display:none;">📄 生成 PDF (已选0张)</button>
+                </div>
+                <div id="gallery"></div>
+            </div>
+
+            <div id="pdf-tab-content">
+                <div style="color:#888; margin-bottom:15px; text-align:center;">这里会显示所有从本地打包生成的 PDF 文件</div>
+                <div id="pdf-list"></div>
+            </div>
+
+            <!-- PDF Preview Modal -->
+            <div id="pdf-modal">
+                <div id="pdf-iframe-container">
+                    <iframe id="pdf-iframe" src=""></iframe>
+                </div>
+                <button id="pdf-modal-close">关闭预览</button>
+            </div>
 
             <!-- Crop modal -->
             <div id="crop-modal">
@@ -268,13 +378,185 @@ class ServerManager {
             </div>
 
             <script>
+                // Tabs Logic
+                const btnTabPhoto = document.getElementById('btn-tab-photo');
+                const btnTabPdf = document.getElementById('btn-tab-pdf');
+                const photoContent = document.getElementById('photo-tab-content');
+                const pdfContent = document.getElementById('pdf-tab-content');
+
+                btnTabPhoto.onclick = () => {
+                    btnTabPhoto.classList.add('active');
+                    btnTabPdf.classList.remove('active');
+                    photoContent.style.display = 'block';
+                    pdfContent.style.display = 'none';
+                };
+                btnTabPdf.onclick = () => {
+                    btnTabPdf.classList.add('active');
+                    btnTabPhoto.classList.remove('active');
+                    photoContent.style.display = 'none';
+                    pdfContent.style.display = 'block';
+                    fetchPdfs();
+                };
+
+                // PDF List Management
+                const pdfList = document.getElementById('pdf-list');
+                function fetchPdfs() {
+                    fetch('/list_pdfs').then(r => r.json()).then(files => {
+                        pdfList.innerHTML = '';
+                        if (files.length === 0) {
+                            pdfList.innerHTML = '<div style="text-align:center; color:#555; padding: 40px;">暂无 PDF 文件</div>';
+                            return;
+                        }
+                        files.forEach(f => {
+                            let div = document.createElement('div');
+                            div.className = 'pdf-item';
+                            
+                            let info = document.createElement('div');
+                            info.className = 'pdf-item-info';
+                            let title = document.createElement('div');
+                            title.className = 'pdf-item-title';
+                            title.textContent = f;
+                            info.appendChild(title);
+                            
+                            let actions = document.createElement('div');
+                            actions.className = 'pdf-item-actions';
+                            
+                            let preview = document.createElement('button');
+                            preview.className = 'pdf-btn';
+                            preview.textContent = '👁️ 预览';
+                            preview.style.background = '#007aff';
+                            preview.style.color = '#fff';
+                            preview.onclick = () => { openPdfPreview(f); };
+                            
+                            let dl = document.createElement('a');
+                            dl.className = 'pdf-btn dl';
+                            dl.textContent = '⬇️ 下载';
+                            dl.href = '/photos/' + encodeURIComponent(f);
+                            dl.download = f;
+                            
+                            let del = document.createElement('button');
+                            del.className = 'pdf-btn del';
+                            del.textContent = '🗑️ 删除';
+                            del.onclick = () => {
+                                if (confirm('确定要永久删除这个 PDF 吗？')) {
+                                    fetch('/delete?file=' + encodeURIComponent(f), { method: 'POST' }).then(() => fetchPdfs());
+                                }
+                            };
+                            
+                            actions.appendChild(preview);
+                            actions.appendChild(dl);
+                            actions.appendChild(del);
+                            
+                            div.appendChild(info);
+                            div.appendChild(actions);
+                            pdfList.appendChild(div);
+                        });
+                    });
+                }
+
+                // PDF Preview Logic
+                const pdfModal = document.getElementById('pdf-modal');
+                const pdfIframe = document.getElementById('pdf-iframe');
+                const pdfModalClose = document.getElementById('pdf-modal-close');
+
+                function openPdfPreview(f) {
+                    pdfIframe.src = '/photos/' + encodeURIComponent(f);
+                    pdfModal.classList.add('active');
+                }
+
+                pdfModalClose.onclick = () => {
+                    pdfModal.classList.remove('active');
+                    setTimeout(() => { pdfIframe.src = ''; }, 300);
+                };
+                pdfModal.addEventListener('click', (e) => { 
+                    if (e.target === pdfModal) {
+                        pdfModal.classList.remove('active'); 
+                        setTimeout(() => { pdfIframe.src = ''; }, 300);
+                    }
+                });
+
                 let currentFiles = new Set();
                 const gallery = document.getElementById('gallery');
+
+                // Multi-select PDF Logic
+                let isSelectMode = false;
+                let selectedFiles = new Set();
+                const toggleSelectBtn = document.getElementById('toggle-select-btn');
+                const generatePdfBtn = document.getElementById('generate-pdf-btn');
+
+                toggleSelectBtn.onclick = () => {
+                    isSelectMode = !isSelectMode;
+                    if (isSelectMode) {
+                        document.body.classList.add('select-mode');
+                        toggleSelectBtn.textContent = '❌ 取消多选';
+                        toggleSelectBtn.classList.add('active-mode');
+                        generatePdfBtn.style.display = 'inline-block';
+                        selectedFiles.clear();
+                        updateGenerateBtn();
+                    } else {
+                        document.body.classList.remove('select-mode');
+                        toggleSelectBtn.textContent = '🔲 多图生成 PDF';
+                        toggleSelectBtn.classList.remove('active-mode');
+                        generatePdfBtn.style.display = 'none';
+                        document.querySelectorAll('.img-container').forEach(el => el.classList.remove('selected'));
+                        selectedFiles.clear();
+                    }
+                };
+
+                function updateGenerateBtn() {
+                    generatePdfBtn.textContent = `📄 生成 PDF (已选${selectedFiles.size}张)`;
+                }
+
+                generatePdfBtn.onclick = () => {
+                    if (selectedFiles.size === 0) {
+                        alert('请先选择图片！'); return;
+                    }
+                    generatePdfBtn.textContent = '⏳ 正在生成 PDF...';
+                    generatePdfBtn.disabled = true;
+                    
+                    fetch('/generate_pdf', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ files: Array.from(selectedFiles) })
+                    }).then(r => r.json()).then(data => {
+                        generatePdfBtn.disabled = false;
+                        updateGenerateBtn();
+                        if (data.pdf_url) {
+                            alert('生成成功！请在【PDF 管理】标签页中查看和下载。');
+                            toggleSelectBtn.click(); // Exit select mode
+                            btnTabPdf.click(); // Switch to PDF tab
+                        } else {
+                            alert('生成失败: ' + (data.error || '未知错误'));
+                        }
+                    }).catch(e => {
+                        alert('请求出错，请检查网络');
+                        generatePdfBtn.disabled = false;
+                        updateGenerateBtn();
+                    });
+                };
 
                 function createPhotoElement(f, isNew) {
                     let container = document.createElement('div');
                     container.className = 'img-container';
                     if (isNew) container.classList.add('new-item');
+
+                    let check = document.createElement('div');
+                    check.className = 'check-mark';
+                    container.appendChild(check);
+
+                    container.onclick = (e) => {
+                        if (isSelectMode) {
+                            e.preventDefault();
+                            if (selectedFiles.has(f)) {
+                                selectedFiles.delete(f);
+                                container.classList.remove('selected');
+                            } else {
+                                selectedFiles.add(f);
+                                container.classList.add('selected');
+                            }
+                            updateGenerateBtn();
+                        }
+                    };
 
                     let a = document.createElement('a');
                     a.href = '/photos/' + encodeURIComponent(f);
@@ -305,6 +587,8 @@ class ServerManager {
                         if (confirm('确定要从手机服务器里永久删除这张照片吗?\\n(手机内也会彻底删除)')) {
                             fetch('/delete?file=' + encodeURIComponent(f), { method: 'POST' }).then(() => {
                                 currentFiles.delete(f);
+                                selectedFiles.delete(f);
+                                if (isSelectMode) updateGenerateBtn();
                                 container.style.display = 'none';
                             });
                         }
@@ -319,11 +603,12 @@ class ServerManager {
 
                 function fetchPhotos() {
                     fetch('/list').then(r => r.json()).then(files => {
-                        let newFiles = files.filter(f => !currentFiles.has(f));
-                        if (newFiles.length > 0 || files.length < currentFiles.size) {
+                        let imgFiles = files.filter(f => !f.toLowerCase().endsWith('.pdf'));
+                        let newFiles = imgFiles.filter(f => !currentFiles.has(f));
+                        if (newFiles.length > 0 || imgFiles.length < currentFiles.size) {
                             gallery.innerHTML = '';
                             currentFiles.clear();
-                            files.forEach(f => {
+                            imgFiles.forEach(f => {
                                 currentFiles.add(f);
                                 gallery.appendChild(createPhotoElement(f, newFiles.includes(f)));
                             });

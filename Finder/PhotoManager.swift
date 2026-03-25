@@ -52,6 +52,21 @@ class PhotoManager {
         }
     }
     
+    func getAllPDFs() -> [URL] {
+        do {
+            let files = try FileManager.default.contentsOfDirectory(at: sharedPhotosDirectory, includingPropertiesForKeys: [.creationDateKey], options: .skipsHiddenFiles)
+            return files.filter { $0.pathExtension.lowercased() == "pdf" }
+            .sorted { u1, u2 in
+                let d1 = (try? u1.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? Date.distantPast
+                let d2 = (try? u2.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? Date.distantPast
+                return d1 > d2
+            }
+        } catch {
+            print("Error getting PDFs: \(error)")
+            return []
+        }
+    }
+    
     func deletePhoto(at url: URL) -> Bool {
         do {
             try FileManager.default.removeItem(at: url)
