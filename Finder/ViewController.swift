@@ -16,6 +16,7 @@ class ViewController: UIViewController {
         view.backgroundColor = .systemBackground
         title = "实时网页相机"
         
+        navigationItem.leftBarButtonItem = UIBarButtonItem(title: "打赏 ❤️", style: .plain, target: self, action: #selector(showTipTapped))
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: "使用说明", style: .plain, target: self, action: #selector(showInstructionsTapped))
         
         setupUI()
@@ -92,6 +93,11 @@ class ViewController: UIViewController {
     }
     
     // MARK: - Actions
+    @objc private func showTipTapped() {
+        let tipVC = TipViewController()
+        navigationController?.pushViewController(tipVC, animated: true)
+    }
+    
     @objc private func showInstructionsTapped() {
         let instructionsVC = InstructionsViewController()
         navigationController?.pushViewController(instructionsVC, animated: true)
