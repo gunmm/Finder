@@ -476,12 +476,14 @@ class TipOptionButton: UIControl {
         textStack.axis = .vertical
         textStack.spacing = 3
         textStack.translatesAutoresizingMaskIntoConstraints = false
+        textStack.isUserInteractionEnabled = false
 
         let rightStack = UIStackView(arrangedSubviews: [priceLabel, spinner])
         rightStack.axis = .horizontal
         rightStack.spacing = 6
         rightStack.alignment = .center
         rightStack.translatesAutoresizingMaskIntoConstraints = false
+        rightStack.isUserInteractionEnabled = false
 
         addSubview(emojiLabel)
         addSubview(textStack)
