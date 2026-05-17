@@ -234,6 +234,7 @@ class ServerManager {
                     background: rgba(255,255,255,0.18); backdrop-filter: blur(4px);
                     color: #fff; border: none; border-radius: 8px;
                     font-size: 13px; cursor: pointer; transition: background 0.15s;
+                    text-align: center; text-decoration: none; box-sizing: border-box;
                 }
                 .action-btn:hover { background: rgba(255,255,255,0.35); }
                 .action-btn.del { background: rgba(255,60,60,0.7); }
@@ -252,7 +253,7 @@ class ServerManager {
                 /* Crop modal */
                 #crop-modal {
                     display: none; position: fixed; inset: 0;
-                    background: rgba(0,0,0,0.92); z-index: 10000;
+                    background: rgba(0,0,0,0.92); z-index: 10010;
                     flex-direction: column; align-items: center; justify-content: center;
                 }
                 #crop-modal.active { display: flex; }
@@ -281,7 +282,7 @@ class ServerManager {
                 /* OCR modal */
                 #ocr-modal {
                     display: none; position: fixed; inset: 0;
-                    background: rgba(0,0,0,0.88); z-index: 10000;
+                    background: rgba(0,0,0,0.88); z-index: 10010;
                     flex-direction: column; align-items: center; justify-content: center;
                 }
                 #ocr-modal.active { display: flex; }
@@ -347,6 +348,27 @@ class ServerManager {
                 #pdf-iframe { width: 100%; height: 100%; border: none; }
                 #pdf-modal-close { margin-top: 15px; padding: 10px 36px; background: #333; color: #fff; border: none; border-radius: 10px; font-size: 16px; cursor: pointer; transition: 0.2s; }
                 #pdf-modal-close:hover { background: #444; }
+
+                /* Preview Modal */
+                #preview-modal {
+                    display: none; position: fixed; inset: 0;
+                    background: rgba(0,0,0,0.92); z-index: 10000;
+                    flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(5px);
+                }
+                #preview-modal.active { display: flex; }
+                #preview-img-wrap { width: 90vw; height: 80vh; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; border-radius: 8px; }
+                #preview-modal-img { max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 10px 40px rgba(0,0,0,0.8); cursor: grab; transform-origin: center center; }
+                #preview-modal-img:active { cursor: grabbing; }
+                #preview-modal-close { position: absolute; top: 20px; right: 30px; font-size: 32px; color: #fff; cursor: pointer; z-index: 10001; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+                .preview-nav-btn { position: absolute; top: 50%; transform: translateY(-50%); font-size: 40px; color: rgba(255,255,255,0.6); cursor: pointer; user-select: none; padding: 20px; z-index: 10001; text-shadow: 0 2px 4px rgba(0,0,0,0.5); transition: 0.2s; }
+                .preview-nav-btn:hover { color: #fff; transform: translateY(-50%) scale(1.1); }
+                #preview-modal-prev { left: 10px; }
+                #preview-modal-next { right: 10px; }
+                #preview-modal-actions { margin-top: 20px; display: flex; gap: 15px; }
+                .preview-btn { padding: 10px 24px; background: #00ff88; color: #000; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; text-decoration: none; display: inline-block; transition: 0.2s; }
+                .preview-btn:hover { background: #00cc6a; transform: scale(1.05); }
+                .preview-btn.del { background: #ff3c3c; color: #fff; }
+                .preview-btn.del:hover { background: #e60000; }
             </style>
         </head>
         <body>
@@ -382,7 +404,7 @@ class ServerManager {
             <!-- Crop modal -->
             <div id="crop-modal">
                 <div id="crop-wrap">
-                    <img id="crop-img" src="" alt="">
+                    <img id="crop-img" src="" alt="" draggable="false">
                     <div id="crop-box">
                         <div class="handle tl"></div><div class="handle tm"></div><div class="handle tr"></div>
                         <div class="handle ml"></div><div class="handle mr"></div>
@@ -407,6 +429,22 @@ class ServerManager {
                         <button class="ocr-close" id="ocr-close-btn">关闭</button>
                     </div>
                     <div id="copy-tip"></div>
+                </div>
+            </div>
+
+            <!-- Preview modal -->
+            <div id="preview-modal">
+                <div id="preview-modal-close">✖</div>
+                <div id="preview-modal-prev" class="preview-nav-btn">◀</div>
+                <div id="preview-img-wrap">
+                    <img id="preview-modal-img" src="" draggable="false">
+                </div>
+                <div id="preview-modal-next" class="preview-nav-btn">▶</div>
+                <div id="preview-modal-actions">
+                    <a id="preview-modal-dl" class="preview-btn" download>⬇️ 下载</a>
+                    <button id="preview-modal-crop" class="preview-btn">✂️ 裁剪</button>
+                    <button id="preview-modal-ocr" class="preview-btn">📝 文字</button>
+                    <button id="preview-modal-del" class="preview-btn del">🗑️ 删除</button>
                 </div>
             </div>
 
@@ -520,6 +558,7 @@ class ServerManager {
                 });
 
                 let currentFiles = new Set();
+                let allImgFiles = [];
                 const gallery = document.getElementById('gallery');
 
                 // Multi-select PDF Logic
@@ -602,16 +641,25 @@ class ServerManager {
                         }
                     };
 
-                    let a = document.createElement('a');
-                    a.href = '/photos/' + encodeURIComponent(f);
-                    a.download = f;
                     let img = document.createElement('img');
                     img.src = '/photos/' + encodeURIComponent(f);
-                    a.appendChild(img);
-                    container.appendChild(a);
+                    img.draggable = false;
+                    img.onclick = (e) => {
+                        if (!isSelectMode) {
+                            let idx = allImgFiles.indexOf(f);
+                            if (idx !== -1) openPreview(idx);
+                        }
+                    };
+                    container.appendChild(img);
 
                     let bar = document.createElement('div');
                     bar.className = 'action-bar';
+
+                    let dlBtn = document.createElement('a');
+                    dlBtn.className = 'action-btn';
+                    dlBtn.textContent = '⬇️ 下载';
+                    dlBtn.href = '/photos/' + encodeURIComponent(f);
+                    dlBtn.download = f;
 
                     let cropBtn = document.createElement('button');
                     cropBtn.className = 'action-btn';
@@ -638,6 +686,7 @@ class ServerManager {
                         }
                     };
 
+                    bar.appendChild(dlBtn);
                     bar.appendChild(cropBtn);
                     bar.appendChild(ocrBtn);
                     bar.appendChild(delBtn);
@@ -648,6 +697,7 @@ class ServerManager {
                 function fetchPhotos() {
                     fetch('/list').then(r => r.json()).then(files => {
                         let imgFiles = files.filter(f => !f.toLowerCase().endsWith('.pdf'));
+                        allImgFiles = imgFiles;
                         let newFiles = imgFiles.filter(f => !currentFiles.has(f));
                         if (newFiles.length > 0 || imgFiles.length < currentFiles.size) {
                             gallery.innerHTML = '';
@@ -664,12 +714,36 @@ class ServerManager {
 
                 // Drag-drop upload
                 const dropzone = document.getElementById('dropzone');
-                window.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.style.display = 'flex'; });
-                window.addEventListener('dragleave', (e) => { e.preventDefault(); if (e.target === dropzone) dropzone.style.display = 'none'; });
+                let isInternalDrag = false;
+                document.addEventListener('dragstart', () => { isInternalDrag = true; });
+                document.addEventListener('dragend', () => { isInternalDrag = false; });
+                
+                let dragTimer;
+                window.addEventListener('dragover', (e) => { 
+                    e.preventDefault(); 
+                    if (!isInternalDrag && e.dataTransfer && e.dataTransfer.types) {
+                        let types = e.dataTransfer.types;
+                        let hasFiles = false;
+                        for (let i = 0; i < types.length; i++) {
+                            if (types[i] === 'Files') hasFiles = true;
+                        }
+                        if (hasFiles) {
+                            dropzone.style.display = 'flex'; 
+                            clearTimeout(dragTimer);
+                        }
+                    }
+                });
+                window.addEventListener('dragleave', (e) => { 
+                    e.preventDefault(); 
+                    dragTimer = setTimeout(() => { dropzone.style.display = 'none'; }, 50);
+                });
                 window.addEventListener('drop', (e) => {
-                    e.preventDefault(); dropzone.style.display = 'none';
+                    e.preventDefault(); 
+                    isInternalDrag = false;
+                    dropzone.style.display = 'none';
+                    if (!e.dataTransfer) return;
                     const files = e.dataTransfer.files;
-                    if (!files.length) return;
+                    if (!files || !files.length) return;
                     const fd = new FormData();
                     for (let i = 0; i < files.length; i++) fd.append('file_' + i, files[i], files[i].name);
                     fetch('/upload', { method: 'POST', body: fd }).then(r => { if (r.ok) fetchPhotos(); });
@@ -844,6 +918,121 @@ class ServerManager {
                 };
                 ocrClose.onclick = () => ocrModal.classList.remove('active');
                 ocrModal.addEventListener('click', (e) => { if (e.target === ocrModal) ocrModal.classList.remove('active'); });
+
+                // ── Preview ──────────────────────────────────────────
+                let currentPreviewIndex = 0;
+                const previewModal = document.getElementById('preview-modal');
+                const previewImg = document.getElementById('preview-modal-img');
+                const previewPrev = document.getElementById('preview-modal-prev');
+                const previewNext = document.getElementById('preview-modal-next');
+                const previewDl = document.getElementById('preview-modal-dl');
+                const previewClose = document.getElementById('preview-modal-close');
+                
+                const previewCrop = document.getElementById('preview-modal-crop');
+                const previewOcr = document.getElementById('preview-modal-ocr');
+                const previewDel = document.getElementById('preview-modal-del');
+
+                let previewScale = 1;
+                let previewTranslateX = 0;
+                let previewTranslateY = 0;
+                let isDraggingPreview = false;
+                let previewStartX = 0, previewStartY = 0;
+
+                function updatePreviewTransform() {
+                    previewImg.style.transform = `translate(${previewTranslateX}px, ${previewTranslateY}px) scale(${previewScale})`;
+                }
+
+                function resetPreviewZoom() {
+                    previewScale = 1;
+                    previewTranslateX = 0;
+                    previewTranslateY = 0;
+                    previewImg.style.transition = 'transform 0.2s';
+                    updatePreviewTransform();
+                    setTimeout(() => { previewImg.style.transition = 'none'; }, 200);
+                }
+
+                function openPreview(index) {
+                    if (allImgFiles.length === 0) {
+                        previewModal.classList.remove('active');
+                        return;
+                    }
+                    if (index < 0) {
+                        index = allImgFiles.length - 1;
+                    } else if (index >= allImgFiles.length) {
+                        index = 0;
+                    }
+                    currentPreviewIndex = index;
+                    const f = allImgFiles[index];
+                    previewImg.src = '/photos/' + encodeURIComponent(f);
+                    previewDl.href = '/photos/' + encodeURIComponent(f);
+                    previewDl.download = f;
+                    
+                    const showNav = allImgFiles.length > 1 ? 'block' : 'none';
+                    previewPrev.style.display = showNav;
+                    previewNext.style.display = showNav;
+                    
+                    resetPreviewZoom();
+                    previewModal.classList.add('active');
+                }
+
+                previewCrop.onclick = (e) => { e.stopPropagation(); openCrop(allImgFiles[currentPreviewIndex]); };
+                previewOcr.onclick = (e) => { e.stopPropagation(); openOCR(allImgFiles[currentPreviewIndex]); };
+                previewDel.onclick = (e) => {
+                    e.stopPropagation();
+                    const f = allImgFiles[currentPreviewIndex];
+                    if (confirm('确定要从手机服务器里永久删除这张照片吗?\\n(手机内也会彻底删除)')) {
+                        fetch('/delete?file=' + encodeURIComponent(f), { method: 'POST' }).then(() => {
+                            currentFiles.delete(f);
+                            allImgFiles.splice(currentPreviewIndex, 1);
+                            document.querySelectorAll('.img-container').forEach(el => {
+                                if(el.querySelector(`a[download="${f}"]`)) el.style.display = 'none';
+                            });
+                            if (allImgFiles.length > 0) {
+                                let nextIndex = currentPreviewIndex >= allImgFiles.length ? allImgFiles.length - 1 : currentPreviewIndex;
+                                openPreview(nextIndex);
+                            } else {
+                                previewModal.classList.remove('active');
+                            }
+                            fetchPhotos();
+                        });
+                    }
+                };
+
+                previewImg.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const zoomDelta = e.deltaY > 0 ? -0.1 : 0.1;
+                    previewScale = Math.max(0.5, Math.min(5, previewScale + zoomDelta));
+                    updatePreviewTransform();
+                });
+
+                previewImg.addEventListener('mousedown', (e) => {
+                    isDraggingPreview = true;
+                    previewStartX = e.clientX - previewTranslateX;
+                    previewStartY = e.clientY - previewTranslateY;
+                    e.preventDefault();
+                });
+
+                document.addEventListener('mousemove', (e) => {
+                    if (isDraggingPreview) {
+                        previewTranslateX = e.clientX - previewStartX;
+                        previewTranslateY = e.clientY - previewStartY;
+                        updatePreviewTransform();
+                    }
+                });
+
+                document.addEventListener('mouseup', () => { isDraggingPreview = false; });
+
+                previewPrev.onclick = (e) => { e.stopPropagation(); openPreview(currentPreviewIndex - 1); };
+                previewNext.onclick = (e) => { e.stopPropagation(); openPreview(currentPreviewIndex + 1); };
+                previewClose.onclick = () => previewModal.classList.remove('active');
+                previewModal.onclick = (e) => { if (e.target === previewModal || e.target.id === 'preview-img-wrap') previewModal.classList.remove('active'); };
+                document.addEventListener('keydown', (e) => {
+                    if (previewModal.classList.contains('active')) {
+                        if (e.key === 'ArrowLeft') openPreview(currentPreviewIndex - 1);
+                        if (e.key === 'ArrowRight') openPreview(currentPreviewIndex + 1);
+                        if (e.key === 'Escape') previewModal.classList.remove('active');
+                    }
+                });
             </script>
         </body>
         </html>
