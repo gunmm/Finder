@@ -5,7 +5,9 @@
 //  Created by minzhe on 2026/3/18.
 //
 
+import Foundation
 import UIKit
+import CloudKit
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -13,7 +15,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        LaunchEventReporter.shared.beginAnalyticsSession()
+        LaunchEventReporter.shared.uploadLaunchEventIfNeeded(isPurchased: false)
         return true
     }
 
@@ -32,5 +35,48 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
 
+}
+
+private final class LaunchEventReporter {
+    static let shared = LaunchEventReporter()
+
+    private let publicDatabase = CKContainer.default().publicCloudDatabase
+    private let userDefaults = UserDefaults.standard
+    private let analyticsLaunchCountKey = "finder.analytics.launchCount"
+
+    private init() {}
+
+    private var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown"
+    }
+
+    private var userId: String {
+        UIDevice.current.identifierForVendor?.uuidString ?? "Unknown"
+    }
+
+    private var regionCode: String {
+        Locale.current.regionCode ?? "Unknown"
+    }
+
+    private var isCurrentUserNew: Bool {
+        max(userDefaults.integer(forKey: analyticsLaunchCountKey), 1) == 1
+    }
+
+    func beginAnalyticsSession() {
+        let launchCount = userDefaults.integer(forKey: analyticsLaunchCountKey) + 1
+        userDefaults.set(launchCount, forKey: analyticsLaunchCountKey)
+    }
+
+    func uploadLaunchEventIfNeeded(isPurchased: Bool) {
+        let record = CKRecord(recordType: "AppLaunchEvent")
+        record["userId"] = userId as CKRecordValue
+        record["appVersion"] = appVersion as CKRecordValue
+        record["isPurchased"] = NSNumber(value: isPurchased)
+        record["isNewUser"] = NSNumber(value: isCurrentUserNew)
+        record["regionCode"] = regionCode as CKRecordValue
+        record["timestamp"] = Date() as CKRecordValue
+
+        publicDatabase.save(record) { _, _ in }
+    }
 }
 
