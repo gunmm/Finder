@@ -28,7 +28,7 @@ class PreviewViewController: UIViewController, UICollectionViewDataSource, UICol
     }
     
     private func setupSegmentedControl() {
-        segmentedControl = UISegmentedControl(items: ["相册 照片", "生成的 PDF"])
+        segmentedControl = UISegmentedControl(items: [NSLocalizedString("Photos", comment: ""), NSLocalizedString("Generated PDFs", comment: "")])
         segmentedControl.selectedSegmentIndex = 0
         segmentedControl.addTarget(self, action: #selector(segmentChanged), for: .valueChanged)
         

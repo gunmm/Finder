@@ -216,7 +216,7 @@ class ServerManager {
         <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
-            <title>手机实时相册</title>
+            <title>\(NSLocalizedString("HTML_Title", comment: ""))</title>
             <style>
                 body { background: #121212; color: #fff; font-family: -apple-system, sans-serif; text-align: center; margin: 0; padding: 30px; }
                 h2 { margin-bottom: 5px; letter-spacing: 1px; }
@@ -379,24 +379,24 @@ class ServerManager {
             </style>
         </head>
         <body>
-            <div id="dropzone">松开鼠标，立马传进手机！</div>
-            <h2>📸 无延迟实时画廊</h2>
+            <div id="dropzone">\(NSLocalizedString("HTML_Dropzone", comment: ""))</div>
+            <h2>\(NSLocalizedString("HTML_H2", comment: ""))</h2>
             <div class="tab-nav">
-                <button class="tab-btn active" id="btn-tab-photo">📸 相册图库</button>
-                <button class="tab-btn" id="btn-tab-pdf">📄 PDF 管理</button>
+                <button class="tab-btn active" id="btn-tab-photo">\(NSLocalizedString("HTML_TabPhoto", comment: ""))</button>
+                <button class="tab-btn" id="btn-tab-pdf">\(NSLocalizedString("HTML_TabPDF", comment: ""))</button>
             </div>
 
             <div id="photo-tab-content">
-                <p>只要手机一拍下照片，瞬间就会在这里自动蹦出来！<br><span style="color:#00ff88;">⬇️ 点击原图下载 | ✂️ 智能裁剪 | 📝 提取文字 | ⬆️ 拖拽上传 | 🗑️ 悬浮删除</span></p>
+                <p>\(NSLocalizedString("HTML_Subtitle", comment: ""))</p>
                 <div id="top-actions">
-                    <button class="top-btn" id="toggle-select-btn">🔲 多图生成 PDF</button>
-                    <button class="top-btn" id="generate-pdf-btn" style="display:none;">📄 生成 PDF (已选0张)</button>
+                    <button class="top-btn" id="toggle-select-btn">\(NSLocalizedString("HTML_MultiPDF", comment: ""))</button>
+                    <button class="top-btn" id="generate-pdf-btn" style="display:none;">\(String(format: NSLocalizedString("HTML_GeneratePDF", comment: ""), "0"))</button>
                 </div>
                 <div id="gallery"></div>
             </div>
 
             <div id="pdf-tab-content">
-                <div style="color:#888; margin-bottom:15px; text-align:center;">这里会显示所有从本地打包生成的 PDF 文件</div>
+                <div style="color:#888; margin-bottom:15px; text-align:center;">\(NSLocalizedString("HTML_PDFHelp", comment: ""))</div>
                 <div id="pdf-list"></div>
             </div>
 
@@ -405,7 +405,7 @@ class ServerManager {
                 <div id="pdf-iframe-container">
                     <iframe id="pdf-iframe" src=""></iframe>
                 </div>
-                <button id="pdf-modal-close">关闭预览</button>
+                <button id="pdf-modal-close">\(NSLocalizedString("HTML_ClosePreview", comment: ""))</button>
             </div>
 
             <!-- Crop modal -->
@@ -418,22 +418,22 @@ class ServerManager {
                         <div class="handle bl"></div><div class="handle bm"></div><div class="handle br"></div>
                     </div>
                 </div>
-                <div id="crop-hint">拖动绿框调整裁剪范围</div>
+                <div id="crop-hint">\(NSLocalizedString("HTML_CropHint", comment: ""))</div>
                 <div id="crop-status"></div>
                 <div id="crop-actions">
-                    <button class="crop-confirm" id="crop-confirm-btn">✅ 确认裁剪</button>
-                    <button class="crop-cancel"  id="crop-cancel-btn">取消</button>
+                    <button class="crop-confirm" id="crop-confirm-btn">\(NSLocalizedString("HTML_ConfirmCrop", comment: ""))</button>
+                    <button class="crop-cancel"  id="crop-cancel-btn">\(NSLocalizedString("Cancel", comment: ""))</button>
                 </div>
             </div>
 
             <!-- OCR modal -->
             <div id="ocr-modal">
                 <div id="ocr-card">
-                    <h3>📝 识别文字结果</h3>
-                    <div id="ocr-text"><span style="color:#888;">⏳ 正在识别，请稍候…</span></div>
+                    <h3>\(NSLocalizedString("HTML_OCRTitle", comment: ""))</h3>
+                    <div id="ocr-text"><span style="color:#888;">\(NSLocalizedString("HTML_OCRWait", comment: ""))</span></div>
                     <div id="ocr-actions">
-                        <button class="ocr-copy"  id="ocr-copy-btn">一键复制</button>
-                        <button class="ocr-close" id="ocr-close-btn">关闭</button>
+                        <button class="ocr-copy"  id="ocr-copy-btn">\(NSLocalizedString("HTML_Copy", comment: ""))</button>
+                        <button class="ocr-close" id="ocr-close-btn">\(NSLocalizedString("HTML_Close", comment: ""))</button>
                     </div>
                     <div id="copy-tip"></div>
                 </div>
@@ -448,10 +448,10 @@ class ServerManager {
                 </div>
                 <div id="preview-modal-next" class="preview-nav-btn">▶</div>
                 <div id="preview-modal-actions">
-                    <a id="preview-modal-dl" class="preview-btn" download>⬇️ 下载</a>
-                    <button id="preview-modal-crop" class="preview-btn">✂️ 裁剪</button>
-                    <button id="preview-modal-ocr" class="preview-btn">📝 文字</button>
-                    <button id="preview-modal-del" class="preview-btn del">🗑️ 删除</button>
+                    <a id="preview-modal-dl" class="preview-btn" download>\(NSLocalizedString("HTML_Download", comment: ""))</a>
+                    <button id="preview-modal-crop" class="preview-btn">\(NSLocalizedString("HTML_Crop", comment: ""))</button>
+                    <button id="preview-modal-ocr" class="preview-btn">\(NSLocalizedString("HTML_OCR", comment: ""))</button>
+                    <button id="preview-modal-del" class="preview-btn del">\(NSLocalizedString("HTML_Delete", comment: ""))</button>
                 </div>
             </div>
 
@@ -482,7 +482,7 @@ class ServerManager {
                     fetch('/list_pdfs').then(r => r.json()).then(files => {
                         pdfList.innerHTML = '';
                         if (files.length === 0) {
-                            pdfList.innerHTML = '<div style="text-align:center; color:#555; padding: 40px;">暂无 PDF 文件</div>';
+                            pdfList.innerHTML = '<div style="text-align:center; color:#555; padding: 40px;">\(NSLocalizedString("HTML_NoPDF", comment: ""))</div>';
                             return;
                         }
                         files.forEach((f, index) => {
@@ -501,7 +501,7 @@ class ServerManager {
                             titleRow.appendChild(title);
                             if (index === 0) {
                                 let badge = document.createElement('span');
-                                badge.textContent = '最新';
+                                badge.textContent = '\(NSLocalizedString("HTML_New", comment: ""))';
                                 badge.style.cssText = 'background:#00ff88;color:#000;font-size:11px;font-weight:bold;padding:2px 8px;border-radius:20px;white-space:nowrap;';
                                 titleRow.appendChild(badge);
                             }
@@ -512,22 +512,22 @@ class ServerManager {
                             
                             let preview = document.createElement('button');
                             preview.className = 'pdf-btn';
-                            preview.textContent = '👁️ 预览';
+                            preview.textContent = '\(NSLocalizedString("HTML_Preview", comment: ""))';
                             preview.style.background = '#007aff';
                             preview.style.color = '#fff';
                             preview.onclick = () => { openPdfPreview(f); };
                             
                             let dl = document.createElement('a');
                             dl.className = 'pdf-btn dl';
-                            dl.textContent = '⬇️ 下载';
+                            dl.textContent = '\(NSLocalizedString("HTML_Download", comment: ""))';
                             dl.href = '/photos/' + encodeURIComponent(f);
                             dl.download = f;
                             
                             let del = document.createElement('button');
                             del.className = 'pdf-btn del';
-                            del.textContent = '🗑️ 删除';
+                            del.textContent = '\(NSLocalizedString("HTML_Delete", comment: ""))';
                             del.onclick = () => {
-                                if (confirm('确定要永久删除这个 PDF 吗？')) {
+                                if (confirm(`\(NSLocalizedString("HTML_DeleteConfirm", comment: ""))`)) {
                                     fetch('/delete?file=' + encodeURIComponent(f), { method: 'POST' }).then(() => fetchPdfs());
                                 }
                             };
@@ -578,14 +578,14 @@ class ServerManager {
                     isSelectMode = !isSelectMode;
                     if (isSelectMode) {
                         document.body.classList.add('select-mode');
-                        toggleSelectBtn.textContent = '❌ 取消多选';
+                        toggleSelectBtn.textContent = '\(NSLocalizedString("HTML_CancelMulti", comment: ""))';
                         toggleSelectBtn.classList.add('active-mode');
                         generatePdfBtn.style.display = 'inline-block';
                         selectedFiles.clear();
                         updateGenerateBtn();
                     } else {
                         document.body.classList.remove('select-mode');
-                        toggleSelectBtn.textContent = '🔲 多图生成 PDF';
+                        toggleSelectBtn.textContent = '\(NSLocalizedString("HTML_MultiPDF", comment: ""))';
                         toggleSelectBtn.classList.remove('active-mode');
                         generatePdfBtn.style.display = 'none';
                         document.querySelectorAll('.img-container').forEach(el => el.classList.remove('selected'));
@@ -599,9 +599,9 @@ class ServerManager {
 
                 generatePdfBtn.onclick = () => {
                     if (selectedFiles.size === 0) {
-                        alert('请先选择图片！'); return;
+                        alert(`\(NSLocalizedString("HTML_SelectFirst", comment: ""))`); return;
                     }
-                    generatePdfBtn.textContent = '⏳ 正在生成 PDF...';
+                    generatePdfBtn.textContent = '\(NSLocalizedString("HTML_GeneratingPDF", comment: ""))';
                     generatePdfBtn.disabled = true;
                     
                     fetch('/generate_pdf', {
@@ -612,14 +612,14 @@ class ServerManager {
                         generatePdfBtn.disabled = false;
                         updateGenerateBtn();
                         if (data.pdf_url) {
-                            alert('生成成功！请在【PDF 管理】标签页中查看和下载。');
+                            alert(`\(NSLocalizedString("HTML_GenPDFSuccess", comment: ""))`);
                             toggleSelectBtn.click(); // Exit select mode
                             btnTabPdf.click(); // Switch to PDF tab
                         } else {
-                            alert('生成失败: ' + (data.error || '未知错误'));
+                            alert(`\(NSLocalizedString("HTML_GenPDFFail", comment: ""))${data.error || '\(NSLocalizedString("HTML_UnknownError", comment: ""))'}`);
                         }
                     }).catch(e => {
-                        alert('请求出错，请检查网络');
+                        alert(`\(NSLocalizedString("HTML_NetworkError", comment: ""))`);
                         generatePdfBtn.disabled = false;
                         updateGenerateBtn();
                     });
@@ -664,26 +664,26 @@ class ServerManager {
 
                     let dlBtn = document.createElement('a');
                     dlBtn.className = 'action-btn';
-                    dlBtn.textContent = '⬇️ 下载';
+                    dlBtn.textContent = '\(NSLocalizedString("HTML_Download", comment: ""))';
                     dlBtn.href = '/photos/' + encodeURIComponent(f);
                     dlBtn.download = f;
 
                     let cropBtn = document.createElement('button');
                     cropBtn.className = 'action-btn';
-                    cropBtn.textContent = '✂️ 裁剪';
+                    cropBtn.textContent = '\(NSLocalizedString("HTML_Crop", comment: ""))';
                     cropBtn.onclick = (e) => { e.preventDefault(); e.stopPropagation(); openCrop(f); };
 
                     let ocrBtn = document.createElement('button');
                     ocrBtn.className = 'action-btn';
-                    ocrBtn.textContent = '📝 文字';
+                    ocrBtn.textContent = '\(NSLocalizedString("HTML_OCR", comment: ""))';
                     ocrBtn.onclick = (e) => { e.preventDefault(); e.stopPropagation(); openOCR(f); };
 
                     let delBtn = document.createElement('button');
                     delBtn.className = 'action-btn del';
-                    delBtn.textContent = '🗑️ 删除';
+                    delBtn.textContent = '\(NSLocalizedString("HTML_Delete", comment: ""))';
                     delBtn.onclick = (e) => {
                         e.preventDefault(); e.stopPropagation();
-                        if (confirm('确定要从手机服务器里永久删除这张照片吗?\\n(手机内也会彻底删除)')) {
+                        if (confirm(`\(NSLocalizedString("HTML_DeletePhotoConfirm", comment: ""))`)) {
                             fetch('/delete?file=' + encodeURIComponent(f), { method: 'POST' }).then(() => {
                                 currentFiles.delete(f);
                                 selectedFiles.delete(f);
@@ -772,18 +772,18 @@ class ServerManager {
                     cropImg.onload = () => {
                         const w = cropImg.clientWidth, h = cropImg.clientHeight;
                         setCropBox(w * 0.2, h * 0.2, w * 0.6, h * 0.6);
-                        cropStatus.textContent = '⏳ 自动识别文字区域…';
+                        cropStatus.textContent = '\(NSLocalizedString("HTML_OCRFinding", comment: ""))';
                         fetch('/analyze?file=' + encodeURIComponent(f))
                             .then(r => r.json())
                             .then(data => {
                                 if (data.x !== undefined) {
                                     setCropBox(data.x * w, data.y * h, data.width * w, data.height * h);
-                                    cropStatus.textContent = '✅ 已自动定位文字区域，可拖动调整';
+                                    cropStatus.textContent = '\(NSLocalizedString("HTML_OCRFound", comment: ""))';
                                 } else {
-                                    cropStatus.textContent = '💡 未检测到明显矩形，请手动调整';
+                                    cropStatus.textContent = '\(NSLocalizedString("HTML_OCRNotFound", comment: ""))';
                                 }
                             })
-                            .catch(() => { cropStatus.textContent = '⚠️ 识别失败，请手动调整'; });
+                            .catch(() => { cropStatus.textContent = '\(NSLocalizedString("HTML_OCRDetectFail", comment: ""))'; });
                     };
                     cropImg.src = '/photos/' + encodeURIComponent(f) + '?t=' + Date.now();
                 }
@@ -838,7 +838,7 @@ class ServerManager {
                 })();
 
                 cropConfirm.onclick = () => {
-                    cropStatus.textContent = '⏳ 裁剪中…';
+                    cropStatus.textContent = '\(NSLocalizedString("HTML_CropProcessing", comment: ""))';
                     const dw = cropImg.clientWidth, dh = cropImg.clientHeight;
                     const sx = cropImg.naturalWidth / dw, sy = cropImg.naturalHeight / dh;
                     const bx = parseInt(cropBox.style.left) * sx, by = parseInt(cropBox.style.top) * sy;
@@ -851,14 +851,14 @@ class ServerManager {
                     fullImg.onload = () => {
                         ctx.drawImage(fullImg, bx, by, bw, bh, 0, 0, bw, bh);
                         canvas.toBlob(blob => {
-                            if (!blob) { cropStatus.textContent = '❌ 裁剪失败'; return; }
+                            if (!blob) { cropStatus.textContent = '\(NSLocalizedString("HTML_CropFail", comment: ""))'; return; }
                             const newName = 'crop_' + cropFile;
                             const fd = new FormData();
                             fd.append('file_0', blob, newName);
                             fetch('/upload', { method: 'POST', body: fd })
                                 .then(() => fetch('/delete?file=' + encodeURIComponent(cropFile), { method: 'POST' }))
                                 .then(() => { cropModal.classList.remove('active'); fetchPhotos(); })
-                                .catch(() => { cropStatus.textContent = '❌ 上传失败'; });
+                                .catch(() => { cropStatus.textContent = '\(NSLocalizedString("Error", comment: ""))'; });
                         }, 'image/jpeg', 0.92);
                     };
                     fullImg.src = '/photos/' + encodeURIComponent(cropFile) + '?t=' + Date.now();
@@ -876,7 +876,7 @@ class ServerManager {
 
                 function openOCR(f) {
                     ocrModal.classList.add('active');
-                    ocrTextDiv.innerHTML = '<span style="color:#888;">⏳ 正在识别，请稍候…</span>';
+                    ocrTextDiv.innerHTML = '<span style="color:#888;">\(NSLocalizedString("HTML_OCRWait", comment: ""))</span>';
                     copyTip.textContent = '';
                     ocrResultText = '';
                     fetch('/ocr?file=' + encodeURIComponent(f))
@@ -886,10 +886,10 @@ class ServerManager {
                                 ocrResultText = data.text;
                                 ocrTextDiv.textContent = data.text;
                             } else {
-                                ocrTextDiv.textContent = '⚠️ 未识别到文字，请确认照片中有清晰的文字内容。';
+                                ocrTextDiv.textContent = '\(NSLocalizedString("Error", comment: ""))';
                             }
                         })
-                        .catch(() => { ocrTextDiv.textContent = '❌ 识别请求失败，请确认手机服务正在运行。'; });
+                        .catch(() => { ocrTextDiv.textContent = '\(NSLocalizedString("Error", comment: ""))'; });
                 }
 
                 ocrCopy.onclick = () => {
@@ -906,16 +906,16 @@ class ServerManager {
                         try { ok = document.execCommand('copy'); } catch(e) {}
                         document.body.removeChild(ta);
                         if (ok) {
-                            copyTip.textContent = '✅ 已复制到剪贴板！';
+                            copyTip.textContent = '\(NSLocalizedString("HTML_TextCopied", comment: ""))';
                             setTimeout(() => { copyTip.textContent = ''; }, 2500);
                         } else {
-                            copyTip.textContent = '⚠️ 请手动选中文字后复制';
+                            copyTip.textContent = '\(NSLocalizedString("Error", comment: ""))';
                         }
                     };
                     if (navigator.clipboard && window.isSecureContext) {
                         navigator.clipboard.writeText(ocrResultText)
                             .then(() => {
-                                copyTip.textContent = '✅ 已复制到剪贴板！';
+                                copyTip.textContent = '\(NSLocalizedString("HTML_TextCopied", comment: ""))';
                                 setTimeout(() => { copyTip.textContent = ''; }, 2500);
                             })
                             .catch(tryExecCommand);
@@ -987,7 +987,7 @@ class ServerManager {
                 previewDel.onclick = (e) => {
                     e.stopPropagation();
                     const f = allImgFiles[currentPreviewIndex];
-                    if (confirm('确定要从手机服务器里永久删除这张照片吗?\\n(手机内也会彻底删除)')) {
+                    if (confirm(`\(NSLocalizedString("HTML_DeletePhotoConfirm", comment: ""))`)) {
                         fetch('/delete?file=' + encodeURIComponent(f), { method: 'POST' }).then(() => {
                             currentFiles.delete(f);
                             allImgFiles.splice(currentPreviewIndex, 1);

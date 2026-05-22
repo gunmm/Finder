@@ -17,7 +17,7 @@ class SettingsViewController: UIViewController {
     
     private func setupUI() {
         view.backgroundColor = .systemBackground
-        title = NSLocalizedString("设置", comment: "Settings title")
+        title = NSLocalizedString("Settings", comment: "")
         
         setupButtons()
         
@@ -58,7 +58,7 @@ class SettingsViewController: UIViewController {
     
     private lazy var reviewButton: UIButton = {
         let button = UIButton(type: .system)
-        button.setTitle(NSLocalizedString("⭐️ 好评", comment: "Review button"), for: .normal)
+        button.setTitle(NSLocalizedString("Rate Us", comment: ""), for: .normal)
         button.titleLabel?.font = .systemFont(ofSize: 18, weight: .medium)
         button.addTarget(self, action: #selector(reviewButtonTapped), for: .touchUpInside)
         return button
@@ -73,7 +73,7 @@ class SettingsViewController: UIViewController {
 
     private lazy var tipButton: UIButton = {
         let button = UIButton(type: .system)
-        button.setTitle(NSLocalizedString("❤️ 打赏", comment: "Tip button"), for: .normal)
+        button.setTitle(NSLocalizedString("Tip", comment: ""), for: .normal)
         button.titleLabel?.font = .systemFont(ofSize: 18, weight: .medium)
         button.addTarget(self, action: #selector(tipButtonTapped), for: .touchUpInside)
         return button
@@ -88,7 +88,7 @@ class SettingsViewController: UIViewController {
     
     private lazy var feedbackButton: UIButton = {
         let button = UIButton(type: .system)
-        button.setTitle(NSLocalizedString("💬 反馈与求助", comment: "Feedback button"), for: .normal)
+        button.setTitle(NSLocalizedString("Feedback & Help", comment: ""), for: .normal)
         button.titleLabel?.font = .systemFont(ofSize: 18, weight: .medium)
         button.addTarget(self, action: #selector(feedbackButtonTapped), for: .touchUpInside)
         return button

@@ -12,10 +12,10 @@ class FeedbackViewController: UIViewController {
     
     private func setupUI() {
         view.backgroundColor = .systemBackground
-        title = NSLocalizedString("用户反馈", comment: "")
+        title = NSLocalizedString("User Feedback", comment: "")
         
-        navigationItem.leftBarButtonItem = UIBarButtonItem(title: NSLocalizedString("取消", comment: ""), style: .plain, target: self, action: #selector(cancelTapped))
-        navigationItem.rightBarButtonItem = UIBarButtonItem(title: NSLocalizedString("提交", comment: ""), style: .done, target: self, action: #selector(submitTapped))
+        navigationItem.leftBarButtonItem = UIBarButtonItem(title: NSLocalizedString("Cancel", comment: ""), style: .plain, target: self, action: #selector(cancelTapped))
+        navigationItem.rightBarButtonItem = UIBarButtonItem(title: NSLocalizedString("Submit", comment: ""), style: .done, target: self, action: #selector(submitTapped))
         
         textView.font = .systemFont(ofSize: 16)
         textView.layer.borderColor = UIColor.systemGray4.cgColor
@@ -24,7 +24,7 @@ class FeedbackViewController: UIViewController {
         textView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(textView)
         
-        placeholderLabel.text = NSLocalizedString("请描述您遇到的问题或建议，相关的日志文件将会一并打包上传以帮助我们快速定位修复。", comment: "")
+        placeholderLabel.text = NSLocalizedString("Feedback Prompt", comment: "")
         placeholderLabel.font = .systemFont(ofSize: 16)
         placeholderLabel.textColor = .lightGray
         placeholderLabel.numberOfLines = 0
@@ -56,7 +56,7 @@ class FeedbackViewController: UIViewController {
     @objc private func submitTapped() {
         let text = textView.text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else {
-            let alert = UIAlertController(title: NSLocalizedString("提示", comment: ""), message: NSLocalizedString("反馈内容不能为空", comment: ""), preferredStyle: .alert)
+            let alert = UIAlertController(title: NSLocalizedString("Notice", comment: ""), message: NSLocalizedString("Feedback Empty", comment: ""), preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: NSLocalizedString("确定", comment: ""), style: .default))
             present(alert, animated: true)
             return
@@ -64,25 +64,25 @@ class FeedbackViewController: UIViewController {
         
         view.endEditing(true)
         
-        let loadingAlert = UIAlertController(title: NSLocalizedString("正在上传...", comment: ""), message: nil, preferredStyle: .alert)
+        let loadingAlert = UIAlertController(title: NSLocalizedString("Uploading...", comment: ""), message: nil, preferredStyle: .alert)
         present(loadingAlert, animated: true)
         
         AppLogger.shared.log("Submitting Feedback")
         CloudKitManager.shared.uploadFeedback(message: text, logFileURL: AppLogger.shared.currentLogFileURL) { [weak self] success, error in
             loadingAlert.dismiss(animated: true) {
                 if success {
-                    let alert = UIAlertController(title: NSLocalizedString("提交成功", comment: ""), message: NSLocalizedString("感谢您的反馈！", comment: ""), preferredStyle: .alert)
+                    let alert = UIAlertController(title: NSLocalizedString("Submit Successful", comment: ""), message: NSLocalizedString("Thank you for feedback!", comment: ""), preferredStyle: .alert)
                     alert.addAction(UIAlertAction(title: NSLocalizedString("确定", comment: ""), style: .default, handler: { _ in
                         self?.dismiss(animated: true)
                     }))
                     self?.present(alert, animated: true)
                 } else {
-                    let errorMessage = error?.localizedDescription ?? NSLocalizedString("未知错误", comment: "")
-                    let alert = UIAlertController(title: NSLocalizedString("提交失败", comment: ""), message: errorMessage, preferredStyle: .alert)
+                    let errorMessage = error?.localizedDescription ?? NSLocalizedString("Unknown Error", comment: "")
+                    let alert = UIAlertController(title: NSLocalizedString("Submit Failed", comment: ""), message: errorMessage, preferredStyle: .alert)
                     alert.addAction(UIAlertAction(title: NSLocalizedString("重试", comment: ""), style: .default, handler: { [weak self] _ in
                         self?.submitTapped()
                     }))
-                    alert.addAction(UIAlertAction(title: NSLocalizedString("取消", comment: ""), style: .cancel))
+                    alert.addAction(UIAlertAction(title: NSLocalizedString("Cancel", comment: ""), style: .cancel))
                     self?.present(alert, animated: true)
                 }
             }

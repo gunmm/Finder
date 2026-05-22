@@ -20,7 +20,7 @@ class InstructionsViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "使用说明"
+        title = NSLocalizedString("Instructions", comment: "")
         view.backgroundColor = .systemBackground
         
         setupUI()
@@ -48,23 +48,7 @@ class InstructionsViewController: UIViewController {
     }
     
     private func configureContent() {
-        let instructionsText = """
-        Finder 使用说明
-
-        功能介绍：
-        Finder 是一款局域网网页相机与图库应用，可以让你随时随地无需数据线，即可通过 Wi-Fi 在电脑浏览器上方便地查看、上传、下载和管理手机里的照片。
-
-        具体使用步骤：
-        1. 连接同一 Wi-Fi：请确保你的手机和电脑（或平板）连接在同一个局域网（Wi-Fi）下。
-        2. 开启网页图库服务：在 App 主界面中，打开“网页实时追踪服务”开关。开启成功后，下方会显示“🌍 浏览器打开: http://192.168.x.x:8080”以及具体的 IP 网址。
-        3. 浏览器访问：在电脑或设备上的电脑浏览器地址栏中，输入显示的 IP 地址并回车。此时你已经可以在网页中看到专属的图库操作页面。
-           （小提示：在手机端长按 IP 地址，可以一键复制链接）
-        4. 实时拍照与同步：在 App 主界面点击“📸 拍照”按钮，相机会自动捕捉并保存，同时网页端会自动刷新，能够立刻在电脑上看到你刚用手机拍摄的照片，实现秒传体验！
-        5. 网页端操作：在浏览器网页中，你可以选中任意照片原图进行下载；可以直接将电脑里的照片拖拽上传到手机云端相册中；也可以直接在网页上轻松地删除不需要的旧照片。
-        6. 本地预览管理：在 App 主界面点击“🖼 手机本地预览”，你可以随时使用手机原生界面直接浏览、预览或管理所有已传输及拍摄并存储在应用内的共享照片。
-
-        祝你使用愉快！
-        """
+        let instructionsText = NSLocalizedString("InstructionsTitle", comment: "") + "\n\n" + NSLocalizedString("InstructionsIntro", comment: "") + "\n\n" + NSLocalizedString("InstructionsSteps", comment: "") + "\n\n" + NSLocalizedString("InstructionsEnd", comment: "")
         
         // Add some paragraph styling if desired
         let paragraphStyle = NSMutableParagraphStyle()

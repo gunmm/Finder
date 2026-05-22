@@ -15,10 +15,10 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
-        title = "实时网页相机"
+        title = NSLocalizedString("Live Web Gallery Title", comment: "")
         
-        navigationItem.leftBarButtonItem = UIBarButtonItem(title: "打赏 ❤️", style: .plain, target: self, action: #selector(showTipTapped))
-        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "使用说明", style: .plain, target: self, action: #selector(showInstructionsTapped))
+        navigationItem.leftBarButtonItem = UIBarButtonItem(title: NSLocalizedString("Tip", comment: ""), style: .plain, target: self, action: #selector(showTipTapped))
+        navigationItem.rightBarButtonItem = UIBarButtonItem(title: NSLocalizedString("Instructions", comment: ""), style: .plain, target: self, action: #selector(showInstructionsTapped))
         
         setupUI()
         setupConstraints()
@@ -28,7 +28,7 @@ class ViewController: UIViewController {
     
     private func setupUI() {
         // --- Live Web Section ---
-        webStatusLabel.text = "网页实时追踪服务: 关闭"
+        webStatusLabel.text = NSLocalizedString("Web Service Off", comment: "")
         webStatusLabel.font = .systemFont(ofSize: 18, weight: .semibold)
         webStatusLabel.textColor = .label
         webStatusLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -39,7 +39,7 @@ class ViewController: UIViewController {
         webSwitch.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(webSwitch)
         
-        webIpLabel.text = "IP 地址: --"
+        webIpLabel.text = NSLocalizedString("IP Address: --", comment: "")
         webIpLabel.font = .systemFont(ofSize: 15)
         webIpLabel.textColor = .secondaryLabel
         webIpLabel.numberOfLines = 0
@@ -49,7 +49,7 @@ class ViewController: UIViewController {
         view.addSubview(webIpLabel)
         
         // --- Buttons Section ---
-        cameraButton.setTitle("📸 拍照", for: .normal)
+        cameraButton.setTitle(NSLocalizedString("Take Photo", comment: ""), for: .normal)
         cameraButton.titleLabel?.font = .systemFont(ofSize: 20, weight: .bold)
         cameraButton.backgroundColor = .systemBlue
         cameraButton.setTitleColor(.white, for: .normal)
@@ -58,7 +58,7 @@ class ViewController: UIViewController {
         cameraButton.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(cameraButton)
         
-        galleryButton.setTitle("🖼 手机本地预览", for: .normal)
+        galleryButton.setTitle(NSLocalizedString("Local Preview", comment: ""), for: .normal)
         galleryButton.titleLabel?.font = .systemFont(ofSize: 20, weight: .bold)
         galleryButton.backgroundColor = .systemGreen
         galleryButton.setTitleColor(.white, for: .normal)
@@ -124,17 +124,17 @@ class ViewController: UIViewController {
         AppLogger.shared.log("Toggled Live Web Switch to \(sender.isOn)")
         if sender.isOn {
             if ServerManager.shared.startLiveWeb() {
-                webStatusLabel.text = "网页图库服务: 开启"
-                let urlStr = ServerManager.shared.liveURL?.absoluteString ?? "正在获取局域网IP..."
-                webIpLabel.text = "🌍 浏览器打开: \(urlStr) (长按复制链接)"
+                webStatusLabel.text = NSLocalizedString("Web Service On", comment: "")
+                let urlStr = ServerManager.shared.liveURL?.absoluteString ?? NSLocalizedString("Getting IP...", comment: "")
+                webIpLabel.text = "\(NSLocalizedString("Open Browser URL", comment: "")) \(urlStr) (\(""))"
             } else {
                 sender.isOn = false
-                webStatusLabel.text = "网页图库服务: 启动失败"
+                webStatusLabel.text = NSLocalizedString("Web Service Failed", comment: "")
             }
         } else {
             ServerManager.shared.stopLiveWeb()
-            webStatusLabel.text = "网页图库服务: 关闭"
-            webIpLabel.text = "IP 地址: --"
+            webStatusLabel.text = NSLocalizedString("Web Service Off", comment: "")
+            webIpLabel.text = NSLocalizedString("IP Address: --", comment: "")
         }
     }
     
@@ -154,7 +154,7 @@ class ViewController: UIViewController {
         let generator = UINotificationFeedbackGenerator()
         generator.notificationOccurred(.success)
         
-        let alert = UIAlertController(title: "已复制", message: urlText, preferredStyle: .alert)
+        let alert = UIAlertController(title: NSLocalizedString("Copied", comment: ""), message: urlText, preferredStyle: .alert)
         present(alert, animated: true)
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
@@ -170,8 +170,8 @@ class ViewController: UIViewController {
             picker.delegate = self
             present(picker, animated: true)
         } else {
-            let alert = UIAlertController(title: "无相机", message: "此设备不支持相机或正运行于模拟器", preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            let alert = UIAlertController(title: NSLocalizedString("No Camera", comment: ""), message: NSLocalizedString("Camera Not Supported", comment: ""), preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: NSLocalizedString("OK", comment: ""), style: .default))
             present(alert, animated: true)
         }
     }

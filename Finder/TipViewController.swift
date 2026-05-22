@@ -42,7 +42,7 @@ class TipViewController: UIViewController {
 
     private let titleLabel: UILabel = {
         let l = UILabel()
-        l.text = "感谢你的打赏！"
+        l.text = NSLocalizedString("TipTitle", comment: "")
         l.font = .systemFont(ofSize: 26, weight: .bold)
         l.textColor = .label
         l.textAlignment = .center
@@ -52,7 +52,7 @@ class TipViewController: UIViewController {
 
     private let subtitleLabel: UILabel = {
         let l = UILabel()
-        l.text = "独立开发不容易，你的每一份支持\n都是我继续前行最大的动力 💪"
+        l.text = NSLocalizedString("TipDesc", comment: "")
         l.font = .systemFont(ofSize: 15)
         l.textColor = .secondaryLabel
         l.textAlignment = .center
@@ -73,7 +73,7 @@ class TipViewController: UIViewController {
 
     private let sectionLabel: UILabel = {
         let l = UILabel()
-        l.text = "选择打赏档位"
+        l.text = NSLocalizedString("Tip", comment: "")
         l.font = .systemFont(ofSize: 13, weight: .semibold)
         l.textColor = .tertiaryLabel
         l.textAlignment = .left
@@ -111,7 +111,7 @@ class TipViewController: UIViewController {
 
         // 文字
         let label = UILabel()
-        label.text = "请求中..."
+        label.text = NSLocalizedString("Loading...", comment: "")
         label.font = .systemFont(ofSize: 14, weight: .medium)
         label.textColor = UIColor.white.withAlphaComponent(0.85)
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -135,7 +135,7 @@ class TipViewController: UIViewController {
 
     private let footerLabel: UILabel = {
         let l = UILabel()
-        l.text = "付款将通过 Apple Pay / App Store 完成\n购买后不支持退款，感谢理解 🙏"
+        l.text = NSLocalizedString("TipFooter", comment: "")
         l.font = .systemFont(ofSize: 12)
         l.textColor = .quaternaryLabel
         l.textAlignment = .center
@@ -147,7 +147,7 @@ class TipViewController: UIViewController {
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "打赏"
+        title = NSLocalizedString("Tip", comment: "")
         view.backgroundColor = .systemGroupedBackground
         setupUI()
         fetchProducts()
@@ -161,9 +161,9 @@ class TipViewController: UIViewController {
     // MARK: - Setup
     private func setupUI() {
         // Build tier buttons
-        smallButton  = TipOptionButton(emoji: "🌱", title: "小赏一下", subtitle: "发芽啦", productID: productIDs[0])
-        mediumButton = TipOptionButton(emoji: "🌻", title: "中赏一波", subtitle: "发发哒",  productID: productIDs[1])
-        bigButton    = TipOptionButton(emoji: "🌈", title: "大赏一记", subtitle: "发大财啦", productID: productIDs[2])
+        smallButton  = TipOptionButton(emoji: "🌱", title: NSLocalizedString("TipSmall", comment: ""), subtitle: NSLocalizedString("TipSmallSub", comment: ""), productID: productIDs[0])
+        mediumButton = TipOptionButton(emoji: "🌻", title: NSLocalizedString("TipMedium", comment: ""), subtitle: NSLocalizedString("TipMediumSub", comment: ""),  productID: productIDs[1])
+        bigButton    = TipOptionButton(emoji: "🌈", title: NSLocalizedString("TipLarge", comment: ""), subtitle: NSLocalizedString("TipLargeSub", comment: ""), productID: productIDs[2])
 
         [smallButton, mediumButton, bigButton].forEach { btn in
             btn?.addTarget(self, action: #selector(tipButtonTapped(_:)), for: .touchUpInside)
@@ -249,11 +249,11 @@ class TipViewController: UIViewController {
     // MARK: - Purchase
     @objc private func tipButtonTapped(_ sender: TipOptionButton) {
         guard SKPaymentQueue.canMakePayments() else {
-            showAlert(title: "无法完成购买", message: "您的设备不支持应用内购买，请检查家长控制或账户设置。")
+            showAlert(title: NSLocalizedString("Purchase Failed", comment: ""), message: NSLocalizedString("Unknown Error", comment: ""))
             return
         }
         guard let product = products.first(where: { $0.productIdentifier == sender.productID }) else {
-            showAlert(title: "商品未加载", message: "请稍候再试，或检查网络连接。")
+            showAlert(title: NSLocalizedString("Error", comment: ""), message: NSLocalizedString("Unknown Error", comment: ""))
             return
         }
         sender.setLoading(true)
@@ -274,17 +274,17 @@ class TipViewController: UIViewController {
 
     private func showAlert(title: String, message: String) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "好的", style: .default))
+        alert.addAction(UIAlertAction(title: NSLocalizedString("OK", comment: ""), style: .default))
         present(alert, animated: true)
     }
 
     private func showTipSuccess() {
         let alert = UIAlertController(
-            title: "打赏成功！🎉",
-            message: "非常感谢您的慷慨支持！\n您的鼓励是开发者前行最大的动力，我一定会更加努力，把 App 做得更好！",
+            title: NSLocalizedString("Tip", comment: ""),
+            message: NSLocalizedString("TipThanks", comment: ""),
             preferredStyle: .alert
         )
-        alert.addAction(UIAlertAction(title: "一起加油！💪", style: .default))
+        alert.addAction(UIAlertAction(title: NSLocalizedString("OK", comment: ""), style: .default))
         present(alert, animated: true)
     }
 
@@ -348,7 +348,7 @@ extension TipViewController: SKProductsRequestDelegate {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             self.productIDs.forEach { id in
-                self.button(for: id)?.setPriceLabel("加载失败")
+                self.button(for: id)?.setPriceLabel(NSLocalizedString("Error", comment: ""))
                 self.button(for: id)?.setLoading(false)
                 self.button(for: id)?.isEnabled = false
             }
@@ -377,8 +377,8 @@ extension TipViewController: SKPaymentTransactionObserver {
                     if let err = transaction.error as? SKError, err.code == .paymentCancelled {
                         // User cancelled — do nothing
                     } else {
-                        let msg = transaction.error?.localizedDescription ?? "未知错误，请重试。"
-                        self?.showAlert(title: "购买失败", message: msg)
+                        let msg = transaction.error?.localizedDescription ?? NSLocalizedString("Unknown Error", comment: "")
+                        self?.showAlert(title: NSLocalizedString("Purchase Failed", comment: ""), message: msg)
                     }
                 }
             case .restored:

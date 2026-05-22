@@ -68,7 +68,7 @@ class PhotoDetailViewController: UIViewController, UIScrollViewDelegate {
     
     private func setupNavigationBar() {
         // 重命名保存按钮为“保存”以省空间
-        let saveButton = UIBarButtonItem(title: "保存", style: .done, target: self, action: #selector(saveToAlbumTapped))
+        let saveButton = UIBarButtonItem(title: NSLocalizedString("Save", comment: ""), style: .done, target: self, action: #selector(saveToAlbumTapped))
         
         // 添加红色垃圾桶删除按钮
         let deleteButton = UIBarButtonItem(barButtonSystemItem: .trash, target: self, action: #selector(deletePhotoTapped))
@@ -86,7 +86,7 @@ class PhotoDetailViewController: UIViewController, UIScrollViewDelegate {
                 }
             } else {
                 DispatchQueue.main.async {
-                    self.showAlert(title: "加载失败", message: "无法读取该照片文件")
+                    self.showAlert(title: NSLocalizedString("Load Failed", comment: ""), message: NSLocalizedString("Cannot Read Photo", comment: ""))
                 }
             }
         }
@@ -128,10 +128,10 @@ class PhotoDetailViewController: UIViewController, UIScrollViewDelegate {
     }
     
     @objc private func deletePhotoTapped() {
-        let alert = UIAlertController(title: "确定删除照片？", message: "这将会从网络磁盘以及 App 内部彻底删除该照片，且无法恢复。", preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "取消", style: .cancel, handler: nil))
+        let alert = UIAlertController(title: NSLocalizedString("Delete Photo Confirm", comment: ""), message: NSLocalizedString("Delete Photo Warning", comment: ""), preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: NSLocalizedString("Cancel", comment: ""), style: .cancel, handler: nil))
         
-        let deleteAction = UIAlertAction(title: "永久删除", style: .destructive) { [weak self] _ in
+        let deleteAction = UIAlertAction(title: NSLocalizedString("Permanent Delete", comment: ""), style: .destructive) { [weak self] _ in
             guard let self = self else { return }
             
             // 从系统中擦除文件
@@ -139,7 +139,7 @@ class PhotoDetailViewController: UIViewController, UIScrollViewDelegate {
                 // 删除成功后返回上一页网格
                 self.navigationController?.popViewController(animated: true)
             } else {
-                self.showAlert(title: "删除失败", message: "文件被占用或无法被删除，请稍后再试。")
+                self.showAlert(title: NSLocalizedString("Delete Failed", comment: ""), message: NSLocalizedString("Delete Failed Reason", comment: ""))
             }
         }
         alert.addAction(deleteAction)
@@ -154,15 +154,15 @@ class PhotoDetailViewController: UIViewController, UIScrollViewDelegate {
     
     @objc private func image(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeRawPointer) {
         if let error = error {
-            showAlert(title: "保存失败", message: error.localizedDescription)
+            showAlert(title: NSLocalizedString("Save Failed", comment: ""), message: error.localizedDescription)
         } else {
-            showAlert(title: "保存成功", message: "该照片已保存至你的手机系统相册！")
+            showAlert(title: NSLocalizedString("Save Success", comment: ""), message: NSLocalizedString("Saved to Album", comment: ""))
         }
     }
     
     private func showAlert(title: String, message: String) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "好的", style: .default, handler: nil))
+        alert.addAction(UIAlertAction(title: NSLocalizedString("OK", comment: ""), style: .default, handler: nil))
         present(alert, animated: true, completion: nil)
     }
 }
