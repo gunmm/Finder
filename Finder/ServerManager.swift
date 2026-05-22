@@ -175,7 +175,11 @@ class ServerManager {
             }
         })
         
-        webServer?.addHandler(forMethod: "GET", path: "/", request: GCDWebServerRequest.self, processBlock: { [weak self] _ in
+        webServer?.addHandler(forMethod: "GET", path: "/", request: GCDWebServerRequest.self, processBlock: { [weak self] request in
+            let remoteIP = request.remoteAddressString ?? "Unknown IP"
+            let userAgent = request.headers["User-Agent"] ?? "Unknown Agent"
+            AppLogger.shared.log("Live Web: Browser connected from IP \(remoteIP) | User-Agent: \(userAgent)")
+            
             let html = self?.getLiveHTML() ?? ""
             return GCDWebServerDataResponse(html: html)
         })
@@ -191,8 +195,11 @@ class ServerManager {
                 GCDWebServerOption_BonjourName: "实时网页图库",
                 GCDWebServerOption_AutomaticallySuspendInBackground: false
             ])
+            let urlStr = web.serverURL?.absoluteString ?? "unknown IP"
+            AppLogger.shared.log("Live Web: Server started successfully. Local URL: \(urlStr)")
             return true
         } catch {
+            AppLogger.shared.log("Live Web: Server start failed - \(error.localizedDescription)")
             print("[Web] ❌ 启动失败: \(error.localizedDescription)")
             return false
         }

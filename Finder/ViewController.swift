@@ -10,6 +10,7 @@ class ViewController: UIViewController {
     // Buttons
     let cameraButton = UIButton(type: .system)
     let galleryButton = UIButton(type: .system)
+    let settingsButton = UIButton(type: .system)
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -21,6 +22,8 @@ class ViewController: UIViewController {
         
         setupUI()
         setupConstraints()
+        
+        AppLogger.shared.log("ViewController viewDidLoad")
     }
     
     private func setupUI() {
@@ -63,6 +66,13 @@ class ViewController: UIViewController {
         galleryButton.addTarget(self, action: #selector(previewPhotosTapped), for: .touchUpInside)
         galleryButton.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(galleryButton)
+        
+        let config = UIImage.SymbolConfiguration(pointSize: 17, weight: .regular)
+        settingsButton.setImage(UIImage(systemName: "gearshape.fill", withConfiguration: config), for: .normal)
+        settingsButton.tintColor = .systemBlue
+        settingsButton.addTarget(self, action: #selector(settingsTapped), for: .touchUpInside)
+        settingsButton.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(settingsButton)
     }
     
     private func setupConstraints() {
@@ -88,22 +98,30 @@ class ViewController: UIViewController {
             galleryButton.topAnchor.constraint(equalTo: cameraButton.bottomAnchor, constant: 30),
             galleryButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             galleryButton.widthAnchor.constraint(equalToConstant: 260),
-            galleryButton.heightAnchor.constraint(equalToConstant: 60)
+            galleryButton.heightAnchor.constraint(equalToConstant: 60),
+            
+            settingsButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
+            settingsButton.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -20),
+            settingsButton.widthAnchor.constraint(equalToConstant: 36),
+            settingsButton.heightAnchor.constraint(equalToConstant: 36)
         ])
     }
     
     // MARK: - Actions
     @objc private func showTipTapped() {
+        AppLogger.shared.log("Tapped Tip button from ViewController")
         let tipVC = TipViewController()
         navigationController?.pushViewController(tipVC, animated: true)
     }
     
     @objc private func showInstructionsTapped() {
+        AppLogger.shared.log("Tapped Instructions button from ViewController")
         let instructionsVC = InstructionsViewController()
         navigationController?.pushViewController(instructionsVC, animated: true)
     }
     
     @objc private func webSwitchChanged(_ sender: UISwitch) {
+        AppLogger.shared.log("Toggled Live Web Switch to \(sender.isOn)")
         if sender.isOn {
             if ServerManager.shared.startLiveWeb() {
                 webStatusLabel.text = "网页图库服务: 开启"
@@ -145,6 +163,7 @@ class ViewController: UIViewController {
     }
     
     @objc private func takePhotoTapped() {
+        AppLogger.shared.log("Tapped Take Photo button")
         if UIImagePickerController.isSourceTypeAvailable(.camera) {
             let picker = UIImagePickerController()
             picker.sourceType = .camera
@@ -158,8 +177,16 @@ class ViewController: UIViewController {
     }
     
     @objc private func previewPhotosTapped() {
+        AppLogger.shared.log("Tapped Preview Photos button")
         let previewVC = PreviewViewController()
         navigationController?.pushViewController(previewVC, animated: true)
+    }
+    
+    @objc private func settingsTapped() {
+        AppLogger.shared.log("Tapped Settings button from ViewController")
+        let settingsVC = SettingsViewController()
+        let nav = UINavigationController(rootViewController: settingsVC)
+        present(nav, animated: true)
     }
 }
 
