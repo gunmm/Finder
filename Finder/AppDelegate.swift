@@ -1,6 +1,6 @@
 //
 //  AppDelegate.swift
-//  Finder
+//  Finder 
 //
 //  Created by minzhe on 2026/3/18.
 //
